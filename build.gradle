@@ -1,0 +1,60 @@
+buildscript {
+    repositories {
+        mavenCentral()
+	google()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.2'
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+        maven { url 'https://jitpack.io' }
+    }
+
+    // tasks.withType(JavaCompile) {
+    //     options.deprecation = true
+    // }
+}
+
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 35
+    namespace "org.billthefarmer.mindmap"
+
+    defaultConfig {
+        applicationId "org.billthefarmer.buses"
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionName "1.10"
+        versionCode 110
+
+        buildConfigField "long", "BUILT", System.currentTimeMillis() + "L"
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_9
+        targetCompatibility JavaVersion.VERSION_1_9
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    lintOptions {
+	disable 'ScopedStorage', 'OldTargetApi', 'NonConstantResourceId', 'GradleDependency',
+	'AndroidGradlePluginVersion'
+	// abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'com.github.hegleB:MindMapView:0.1.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+}
