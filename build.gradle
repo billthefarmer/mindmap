@@ -28,8 +28,8 @@ android {
     namespace "org.billthefarmer.mindmap"
 
     defaultConfig {
-        applicationId "org.billthefarmer.buses"
-        minSdkVersion 21
+        applicationId "org.billthefarmer.mindmap"
+        minSdkVersion 26
         targetSdkVersion 35
         versionName "1.10"
         versionCode 110

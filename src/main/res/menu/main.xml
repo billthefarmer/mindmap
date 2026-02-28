@@ -1,72 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="AlwaysShowAction">
+
   <item
-      android:id="@+id/findAll"
-      android:showAsAction="never"
-      android:title="@string/findAll" />
-  <item
-      android:id="@+id/newNote"
+      android:id="@+id/action_add"
       android:icon="@drawable/ic_add_white_24dp"
-      android:showAsAction="ifRoom"
-      android:title="@string/newNote" />
+      android:showAsAction="always"
+      android:title="@string/add" />
+
   <item
-      android:id="@+id/saveNote"
-      android:icon="@drawable/ic_save_white_24dp"
-      android:showAsAction="ifRoom"
-      android:title="@string/saveNote" />
+      android:id="@+id/action_remove"
+      android:icon="@drawable/ic_remove_white_24dp"
+      android:showAsAction="always"
+      android:title="@string/remove" />
+
   <item
-      android:id="@+id/openNote"
-      android:icon="@drawable/ic_folder_open_white_24dp"
-      android:showAsAction="ifRoom"
-      android:title="@string/openNote" />
+      android:id="@+id/action_edit"
+      android:icon="@drawable/ic_edit_white_24dp"
+      android:showAsAction="always"
+      android:title="@string/edit" />
+
   <item
-      android:id="@+id/search"
-      android:icon="@drawable/ic_search_white_24dp"
-      android:showAsAction="ifRoom|collapseActionView"
-      android:actionViewClass="android.widget.SearchView"
-      android:title="@string/search" />
-  <item
-      android:id="@+id/saveAs"
-      android:showAsAction="never"
-      android:title="@string/saveAs" />
-  <item
-      android:id="@+id/openRecent"
-      android:showAsAction="never"
-      android:title="@string/openRecent">
-    <menu>
-      <item
-          android:id="@+id/fileItem"
-          android:showAsAction="never"
-          android:title="" />
-      <item
-          android:id="@+id/clearList"
-          android:showAsAction="never"
-          android:title="@string/clearList">
-      </item>
-    </menu>
-  </item>
-  <item
-      android:id="@+id/printNote"
-      android:icon="@drawable/ic_print_white_24dp"
-      android:showAsAction="ifRoom"
-      android:title="@string/print" />
-  <item
-      android:id="@+id/shareNote"
-      android:icon="@drawable/ic_share_white_24dp"
-      android:showAsAction="ifRoom"
-      android:title="@string/share" />
-  <item
-      android:id="@+id/addDate"
-      android:showAsAction="never"
-      android:title="@string/addDate" />
-  <item
-      android:id="@+id/addMedia"
-      android:showAsAction="never"
-      android:title="@string/addMedia" />
-  <item
-      android:id="@+id/backup"
-      android:showAsAction="never"
-      android:title="@string/backup" />
+      android:id="@+id/action_fit"
+      android:icon="@drawable/ic_zoom_out_map_white_24dp"
+      android:showAsAction="always"
+      android:title="@string/fit" />
 
 </menu>

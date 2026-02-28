@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <string name="appName">MindMap</string>
+
+  <string name="add">Add</string>
+  <string name="remove">Remove</string>
+  <string name="edit">Edit</string>
+  <string name="fit">Fit</string>
+
+  <string name="addNode">Add node</string>
+  <string name="node">Node</string>
+  <string name="nodeDesc">
+    Please enter the description for this node
+  </string>
+  <string name="description">Description</string>
+  <string name="editNode">Edit node</string>
+  <string name="remNode">Remove node</string>
+  <string name="nodeRem">
+    Do you want to remove this node?
+  </string>
+
+  <string name="help">Help</string>
+  <string name="about">About</string>
+  <string name="version" formatted="false"><a
+  href="https://github.com/billthefarmer/print/releases/latest">%s</a>\n\nBuilt
+  %s\n\nCopyright \u00A9 2021 <a
+  href="https://github.com/billthefarmer">Bill Farmer</a>\n\nLicence
+  <a href="https://www.gnu.org/licenses/gpl.txt">GNU GPLv3</a>
+  </string>
+
+</resources>
