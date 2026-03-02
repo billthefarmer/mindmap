@@ -29,6 +29,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -46,11 +47,17 @@ import com.mindsync.library.data.RectangleNodeData;
 import com.mindsync.library.data.Tree;
 import com.mindsync.library.util.Dp;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MindMap extends Activity
 {
     public static final String TAG = "MindMap";
+
+    public static final String NODES = "nodes";
+    public static final String PARENT = "parent";
+    public static final String CONTENT = "content";
 
     private MindMapView mindMapView;
     private Tree<Node> tree;
@@ -67,12 +74,72 @@ public class MindMap extends Activity
         tree = new Tree<>(this);
         mindMapView.setTree(tree);
         mindMapView.initialize();
+
         mindMapView.setNodeClickListener((NodeData<?> node) ->
         {
             selectedNode = createNode(node);
             invalidateOptionsMenu();
             // ...
         });
+    }
+
+    // onRestoreInstanceState
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState)
+    {
+        super.onRestoreInstanceState(savedInstanceState);
+        List<String> list = savedInstanceState.getStringArrayList(NODES);
+        if (list != null)
+        {
+            for (String id: list)
+            {
+                if (id == tree.getRootNode().getId())
+                    continue;
+
+                Bundle bundle = savedInstanceState.getBundle(id);
+                if (bundle == null)
+                    continue;
+
+                String parentId = bundle.getString(PARENT);
+                String content = bundle.getString(CONTENT);
+                tree.addNode(id, parentId, content);
+            }
+        }
+    }
+
+    // onSaveInstanceState
+    @Override
+    public void onSaveInstanceState(Bundle outState)
+    {
+        super.onSaveInstanceState(outState);
+
+        Map<String, NodeData<?>> map =
+            mindMapView.getMindMapManager().deepCopyTree();
+        outState.putStringArrayList(NODES, new ArrayList<>(map.keySet()));
+
+        for (String id: map.keySet())
+        {
+            if (id == tree.getRootNode().getId())
+                continue;
+
+            NodeData node = map.get(id);
+            String parentId = node.getParentId();
+            if (parentId == null)
+            {
+                map.remove(id);
+                continue;
+            }
+            NodeData parentNode = map.get(parentId);
+            if (!parentNode.getChildren().contains(node))
+            {
+                map.remove(id);
+                continue;
+            }
+            Bundle bundle = new Bundle();
+            bundle.putString(PARENT, node.getParentId());
+            bundle.putString(CONTENT, node.getDescription());
+            outState.putBundle(id, bundle);
+        }
     }
 
     // On create options menu
@@ -150,7 +217,6 @@ public class MindMap extends Activity
             {
             case DialogInterface.BUTTON_POSITIVE: 
                 mindMapView.removeNode();
-                selectedNode = null;
                 break;
             }
         });
