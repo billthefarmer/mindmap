@@ -113,33 +113,21 @@ public class MindMap extends Activity
     {
         super.onSaveInstanceState(outState);
 
-        Map<String, NodeData<?>> map =
-            mindMapView.getMindMapManager().deepCopyTree();
-        outState.putStringArrayList(NODES, new ArrayList<>(map.keySet()));
-
-        for (String id: map.keySet())
+        ArrayList<String> list = new ArrayList<>();
+        NodeData<?> root = tree.getRootNode();
+        for (String id: root.getChildren())
         {
-            if (id == tree.getRootNode().getId())
-                continue;
-
-            NodeData node = map.get(id);
-            String parentId = node.getParentId();
-            if (parentId == null)
-            {
-                map.remove(id);
-                continue;
-            }
-            NodeData parentNode = map.get(parentId);
-            if (!parentNode.getChildren().contains(node))
-            {
-                map.remove(id);
-                continue;
-            }
+            list.add(id);
+            NodeData<?> node = tree.getNode(id);
             Bundle bundle = new Bundle();
             bundle.putString(PARENT, node.getParentId());
             bundle.putString(CONTENT, node.getDescription());
             outState.putBundle(id, bundle);
+            for (String child: node.getChildren())
+                saveState(list, outState, child);
         }
+
+        outState.putStringArrayList(NODES, list);
     }
 
     // On create options menu
@@ -200,6 +188,19 @@ public class MindMap extends Activity
         }
 
         return true;
+    }
+
+    // saveState
+    private void  saveState(List<String> list, Bundle outState, String id)
+    {
+        list.add(id);
+        NodeData<?> node = tree.getNode(id);
+        Bundle bundle = new Bundle();
+        bundle.putString(PARENT, node.getParentId());
+        bundle.putString(CONTENT, node.getDescription());
+        outState.putBundle(id, bundle);
+        for (String child: node.getChildren())
+            saveState(list, outState, child);
     }
 
     // add
