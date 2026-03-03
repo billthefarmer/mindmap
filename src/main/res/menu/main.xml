@@ -28,4 +28,16 @@
       android:showAsAction="always"
       android:title="@string/fit" />
 
+  <item
+      android:id="@+id/action_open"
+      android:icon="@drawable/ic_folder_open_white_24dp"
+      android:showAsAction="ifRoom"
+      android:title="@string/open" />
+
+  <item
+      android:id="@+id/action_save"
+      android:icon="@drawable/ic_save_white_24dp"
+      android:showAsAction="ifRoom"
+      android:title="@string/save" />
+
 </menu>

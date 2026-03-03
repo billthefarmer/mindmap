@@ -7,6 +7,8 @@
   <string name="remove">Remove</string>
   <string name="edit">Edit</string>
   <string name="fit">Fit</string>
+  <string name="open">Open file</string>
+  <string name="save">Save file</string>
 
   <string name="addNode">Add node</string>
   <string name="node">Node</string>
@@ -18,6 +20,12 @@
   <string name="remNode">Remove node</string>
   <string name="nodeRem">
     Do you want to remove this node?
+  </string>
+  <string name="invalid">
+    This file is not a MindMap file
+  </string>
+  <string name="replace">
+    Do you want to replace this MindMap
   </string>
 
   <string name="help">Help</string>

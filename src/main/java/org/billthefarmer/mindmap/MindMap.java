@@ -27,6 +27,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -47,17 +49,30 @@ import com.mindsync.library.data.RectangleNodeData;
 import com.mindsync.library.data.Tree;
 import com.mindsync.library.util.Dp;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 public class MindMap extends Activity
 {
     public static final String TAG = "MindMap";
 
+    public static final String ID = "id";
     public static final String NODES = "nodes";
     public static final String PARENT = "parent";
     public static final String CONTENT = "content";
+    public static final String APPLICATION_JSON = "application/json";
+
+    public static final int OPEN_DOCUMENT = 1;
+    public static final int CREATE_DOCUMENT = 2;
 
     private MindMapView mindMapView;
     private Tree<Node> tree;
@@ -104,6 +119,16 @@ public class MindMap extends Activity
                 String content = bundle.getString(CONTENT);
                 tree.addNode(id, parentId, content);
             }
+            mindMapView.animateTreeChange();
+            mindMapView.requestLayout();
+            mindMapView.getMindMapManager().setSelectedNode(tree.getRootNode());
+            mindMapView.postDelayed(() ->
+            {
+                mindMapView.addNode(TAG);
+                mindMapView.getMindMapManager()
+                    .setSelectedNode(mindMapView.getAddNode());
+                mindMapView.postDelayed(() -> mindMapView.removeNode(), 100);
+            }, 100);
         }
     }
 
@@ -124,7 +149,7 @@ public class MindMap extends Activity
             bundle.putString(CONTENT, node.getDescription());
             outState.putBundle(id, bundle);
             for (String child: node.getChildren())
-                saveState(list, outState, child);
+                saveState(outState, list, child);
         }
 
         outState.putStringArrayList(NODES, list);
@@ -165,22 +190,32 @@ public class MindMap extends Activity
 	{
             // Add
         case R.id.action_add:
-            add(item);
+            add();
             break;
 
             // Help
         case R.id.action_remove:
-            remove(item);
+            remove();
             break;
 
             // Edit
         case R.id.action_edit:
-            edit(item);
+            edit();
             break;
 
             // Fit
         case R.id.action_fit:
-            fit(item);
+            fit();
+            break;
+
+            // Save
+        case R.id.action_open:
+            openFile();
+            break;
+
+            // Save
+        case R.id.action_save:
+            saveFile();
             break;
 
         default:
@@ -190,8 +225,37 @@ public class MindMap extends Activity
         return true;
     }
 
+    // onActivityResult
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode,
+                                    Intent data)
+    {
+        // Do nothing if cancelled
+        if (resultCode != RESULT_OK)
+            return;
+
+        switch (requestCode)
+        {
+        case OPEN_DOCUMENT:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            openFile(data.getData());
+            break;
+
+        case CREATE_DOCUMENT:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            saveFile(data.getData());
+            break;
+        }
+    }
+
     // saveState
-    private void  saveState(List<String> list, Bundle outState, String id)
+    private void  saveState(Bundle outState, List<String> list, String id)
     {
         list.add(id);
         NodeData<?> node = tree.getNode(id);
@@ -200,17 +264,17 @@ public class MindMap extends Activity
         bundle.putString(CONTENT, node.getDescription());
         outState.putBundle(id, bundle);
         for (String child: node.getChildren())
-            saveState(list, outState, child);
+            saveState(outState, list, child);
     }
 
     // add
-    private void add(MenuItem item)
+    private void add()
     {
         addDialog(R.string.addNode, R.string.nodeDesc);
     }
 
     // remove
-    private void remove(MenuItem item)
+    private void remove()
     {
         alertDialog(R.string.remNode, R.string.nodeRem, (dialog, id) ->
         {
@@ -224,14 +288,14 @@ public class MindMap extends Activity
     }
 
     // edit
-    private void edit(MenuItem item)
+    private void edit()
     {
         descriptionDialog(R.string.editNode, R.string.nodeDesc,
                           selectedNode.getDescription());
     }
 
     // fit
-    private void fit(MenuItem item)
+    private void fit()
     {
         mindMapView.fitScreen();
     }
@@ -306,6 +370,20 @@ public class MindMap extends Activity
         builder.show();
     }
 
+    // alertDialog
+    private void alertDialog(int title, String message)
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+
+        // Add the buttons
+        builder.setPositiveButton(android.R.string.ok, null);
+
+        // Create the AlertDialog
+        builder.show();
+    }
+
     // createNode
     public Node createNode(NodeData<?> node)
     {
@@ -340,6 +418,155 @@ public class MindMap extends Activity
 
         else
             return null;
+    }
+
+    // openFile
+    private void openFile()
+    {
+
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+            alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
+        {
+            switch(id)
+            {
+            case DialogInterface.BUTTON_POSITIVE:
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType(APPLICATION_JSON);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.putExtra(Intent.EXTRA_TITLE, TAG);
+                startActivityForResult(intent, OPEN_DOCUMENT);
+                break;
+            }
+        });
+
+        else
+        {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType(APPLICATION_JSON);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.putExtra(Intent.EXTRA_TITLE, TAG);
+            startActivityForResult(intent, OPEN_DOCUMENT);
+        }
+    }
+
+    // openFile
+    private void openFile(Uri uri)
+    {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader
+             (new InputStreamReader(new BufferedInputStream
+               (getContentResolver().openInputStream(uri)))))
+        {
+            String line;
+            while ((line = reader.readLine()) != null)
+            {
+                builder.append(line);
+                builder.append(System.getProperty("line.separator"));
+            }
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+
+        try
+        {
+            JSONObject object = new JSONObject(builder.toString());
+            if (!TAG.equals(object.getString(CONTENT)))
+                throw new Exception(getResources().getString(R.string.invalid));
+
+            tree = new Tree(this);
+            mindMapView.setTree(tree);
+            mindMapView.initialize();
+            JSONArray array = object.getJSONArray(NODES);
+            for (int i = 0; i < array.length(); i++)
+            {
+                JSONObject node = array.getJSONObject(i);
+                String id = node.getString(ID);
+                String parentId = node.getString(PARENT);
+                String content = node.getString(CONTENT);
+                tree.addNode(id, parentId, content);
+            }
+
+            recreate();
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // saveFile
+    private void saveFile()
+    {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.setType(APPLICATION_JSON);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_TITLE, TAG);
+        startActivityForResult(intent, CREATE_DOCUMENT);
+    }
+
+    // saveFile
+    private void saveFile(Uri uri)
+    {
+        JSONObject object = new JSONObject();
+        try
+        {
+            object.put(CONTENT, TAG);
+            JSONArray array = new JSONArray();
+            NodeData<?> root = tree.getRootNode();
+            for (String id: root.getChildren())
+            {
+                NodeData<?> node = tree.getNode(id);
+                JSONObject entry = new JSONObject();
+                entry.put(ID, node.getId());
+                entry.put(PARENT, node.getParentId());
+                entry.put(CONTENT, node.getDescription());
+                array.put(entry);
+                for (String child: node.getChildren())
+                    saveNodes(array, child);
+            }
+            object.put(NODES, array);
+            Log.d(TAG, "Nodes " + object.toString(4));
+        }
+
+        catch (Exception e) {}
+
+        try (OutputStreamWriter writer = new OutputStreamWriter
+             (getContentResolver().openOutputStream(uri, "rwt")))
+        {
+            writer.append(object.toString());
+            writer.flush();
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // saveJson
+    private void saveNodes(JSONArray array, String id)
+    {
+        NodeData<?> node = tree.getNode(id);
+        try
+        {
+            JSONObject entry = new JSONObject();
+            entry.put(ID, node.getId());
+            entry.put(PARENT, node.getParentId());
+            entry.put(CONTENT, node.getDescription());
+            array.put(entry);
+        }
+
+        catch (Exception e) {}
+        for (String child: node.getChildren())
+            saveNodes(array, child);
     }
 
     // Node
