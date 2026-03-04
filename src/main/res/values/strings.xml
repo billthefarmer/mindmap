@@ -27,6 +27,9 @@
   <string name="replace">
     Do you want to replace this MindMap
   </string>
+  <string name="back">
+    Do you want to save this MindMap
+  </string>
 
   <string name="help">Help</string>
   <string name="about">About</string>

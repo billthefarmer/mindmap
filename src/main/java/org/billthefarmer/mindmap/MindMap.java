@@ -233,6 +233,35 @@ public class MindMap extends Activity
         return true;
     }
 
+    // onBackPressed
+    @Override
+    public void onBackPressed()
+    {
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+        {
+            alertDialog(R.string.appName, R.string.back, (dialog, id) ->
+            {
+                switch (id)
+                {
+                case DialogInterface.BUTTON_POSITIVE:
+                    saveFile();
+                    break;
+
+                case DialogInterface.BUTTON_NEGATIVE:
+                    finish();
+                    break;
+                }
+            });
+        }
+
+        else
+        {
+            setResult(RESULT_CANCELED, null);
+            finish();
+        }
+    }
+
     // onActivityResult
     @Override
     protected void onActivityResult(int requestCode, int resultCode,
@@ -288,7 +317,7 @@ public class MindMap extends Activity
         {
             switch(id)
             {
-            case DialogInterface.BUTTON_POSITIVE: 
+            case DialogInterface.BUTTON_POSITIVE:
                 mindMapView.removeNode();
                 break;
             }
@@ -486,10 +515,12 @@ public class MindMap extends Activity
             if (!TAG.equals(object.getString(CONTENT)))
                 throw new Exception(getResources().getString(R.string.invalid));
 
-            tree = new Tree(this);
+            tree = new Tree<>(this);
             mindMapView.setTree(tree);
             mindMapView.initialize();
             NodeData<?> root = tree.getRootNode();
+            mindMapView.getMindMapManager().setSelectedNode(root);
+            mindMapView.editNodeText(object.getString(root.getId()));
             JSONArray array = object.getJSONArray(NODES);
             for (int i = 0; i < array.length(); i++)
             {
