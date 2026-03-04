@@ -1,4 +1,4 @@
-# ![MindMap](MindMap.svg) MindMap
+# ![MindMap](MindMap.svg) MindMap [![.github/workflows/build.yml](https://github.com/billthefarmer/mindmap/actions/workflows/build.yml/badge.svg)](https://github.com/billthefarmer/mindmap/actions/workflows/build.yml)
 
 Mind Map app
 
