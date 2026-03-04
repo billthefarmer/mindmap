@@ -551,7 +551,7 @@ public class MindMap extends Activity
         }
     }
 
-    // saveJson
+    // saveNodes
     private void saveNodes(JSONArray array, String id)
     {
         NodeData<?> node = tree.getNode(id);
@@ -564,7 +564,10 @@ public class MindMap extends Activity
             array.put(entry);
         }
 
-        catch (Exception e) {}
+        catch (Exception e)
+        {
+            return;
+        }
         for (String child: node.getChildren())
             saveNodes(array, child);
     }
