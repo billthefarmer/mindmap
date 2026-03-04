@@ -2,7 +2,7 @@
 
 Mind Map app
 
-Uses [library](https://github.com/hegleB/MindMapView) by [SangJun
+Uses [MindMapView](https://github.com/hegleB/MindMapView) library by [SangJun
 Lee](https://github.com/hegleB).
 
 ![MindMap](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/MindMap.png)
