@@ -31,6 +31,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.JsonWriter;
+import android.util.JsonReader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -73,6 +75,7 @@ public class MindMap extends Activity
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
+    public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
     private Tree<Node> tree;
@@ -103,12 +106,16 @@ public class MindMap extends Activity
     public void onRestoreInstanceState(Bundle savedInstanceState)
     {
         super.onRestoreInstanceState(savedInstanceState);
+
+        NodeData<?> root = tree.getRootNode();
+        mindMapView.getMindMapManager().setSelectedNode(root);
+        mindMapView.editNodeText(savedInstanceState.getString(root.getId()));
         List<String> list = savedInstanceState.getStringArrayList(NODES);
         if (list != null)
         {
             for (String id: list)
             {
-                if (id == tree.getRootNode().getId())
+                if (id == root.getId())
                     continue;
 
                 Bundle bundle = savedInstanceState.getBundle(id);
@@ -121,14 +128,14 @@ public class MindMap extends Activity
             }
             mindMapView.animateTreeChange();
             mindMapView.requestLayout();
-            mindMapView.getMindMapManager().setSelectedNode(tree.getRootNode());
             mindMapView.postDelayed(() ->
             {
                 mindMapView.addNode(TAG);
                 mindMapView.getMindMapManager()
                     .setSelectedNode(mindMapView.getAddNode());
-                mindMapView.postDelayed(() -> mindMapView.removeNode(), 100);
-            }, 100);
+                mindMapView.postDelayed
+                    (() -> mindMapView.removeNode(), NODE_DELAY);
+            }, NODE_DELAY);
         }
     }
 
@@ -138,8 +145,9 @@ public class MindMap extends Activity
     {
         super.onSaveInstanceState(outState);
 
-        ArrayList<String> list = new ArrayList<>();
         NodeData<?> root = tree.getRootNode();
+        outState.putString(root.getId(), root.getDescription());
+        ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
         {
             list.add(id);
@@ -481,6 +489,7 @@ public class MindMap extends Activity
             tree = new Tree(this);
             mindMapView.setTree(tree);
             mindMapView.initialize();
+            NodeData<?> root = tree.getRootNode();
             JSONArray array = object.getJSONArray(NODES);
             for (int i = 0; i < array.length(); i++)
             {
@@ -514,34 +523,28 @@ public class MindMap extends Activity
     // saveFile
     private void saveFile(Uri uri)
     {
-        JSONObject object = new JSONObject();
-        try
+        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter
+              (getContentResolver().openOutputStream(uri, "rwt"))))
         {
-            object.put(CONTENT, TAG);
-            JSONArray array = new JSONArray();
+            writer.beginObject();
+            writer.name(CONTENT).value(TAG);
             NodeData<?> root = tree.getRootNode();
+            writer.name(root.getId()).value(root.getDescription());
+            writer.name(NODES);
+            writer.beginArray();
             for (String id: root.getChildren())
             {
                 NodeData<?> node = tree.getNode(id);
-                JSONObject entry = new JSONObject();
-                entry.put(ID, node.getId());
-                entry.put(PARENT, node.getParentId());
-                entry.put(CONTENT, node.getDescription());
-                array.put(entry);
+                writer.beginObject();
+                writer.name(ID).value(node.getId());
+                writer.name(PARENT).value(node.getParentId());
+                writer.name(CONTENT).value(node.getDescription());
+                writer.endObject();
                 for (String child: node.getChildren())
-                    saveNodes(array, child);
+                    saveNodes(writer, child);
             }
-            object.put(NODES, array);
-            Log.d(TAG, "Nodes " + object.toString(4));
-        }
-
-        catch (Exception e) {}
-
-        try (OutputStreamWriter writer = new OutputStreamWriter
-             (getContentResolver().openOutputStream(uri, "rwt")))
-        {
-            writer.append(object.toString());
-            writer.flush();
+            writer.endArray();
+            writer.endObject();
         }
 
         catch (Exception e)
@@ -552,24 +555,17 @@ public class MindMap extends Activity
     }
 
     // saveNodes
-    private void saveNodes(JSONArray array, String id)
+    private void saveNodes(JsonWriter writer, String id)
+        throws Exception
     {
         NodeData<?> node = tree.getNode(id);
-        try
-        {
-            JSONObject entry = new JSONObject();
-            entry.put(ID, node.getId());
-            entry.put(PARENT, node.getParentId());
-            entry.put(CONTENT, node.getDescription());
-            array.put(entry);
-        }
-
-        catch (Exception e)
-        {
-            return;
-        }
+        writer.beginObject();
+        writer.name(ID).value(node.getId());
+        writer.name(PARENT).value(node.getParentId());
+        writer.name(CONTENT).value(node.getDescription());
+        writer.endObject();
         for (String child: node.getChildren())
-            saveNodes(array, child);
+            saveNodes(writer, child);
     }
 
     // Node
