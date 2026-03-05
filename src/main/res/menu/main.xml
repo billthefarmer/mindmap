@@ -25,7 +25,7 @@
   <item
       android:id="@+id/action_fit"
       android:icon="@drawable/ic_zoom_out_map_white_24dp"
-      android:showAsAction="always"
+      android:showAsAction="ifRoom"
       android:title="@string/fit" />
 
   <item

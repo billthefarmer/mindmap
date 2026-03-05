@@ -28,9 +28,11 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.util.JsonWriter;
 import android.util.JsonReader;
 import android.util.Log;
@@ -68,9 +70,11 @@ public class MindMap extends Activity
     public static final String TAG = "MindMap";
 
     public static final String ID = "id";
+    public static final String ROOT = "root";
     public static final String NODES = "nodes";
     public static final String PARENT = "parent";
     public static final String CONTENT = "content";
+
     public static final String APPLICATION_JSON = "application/json";
 
     public static final int OPEN_DOCUMENT = 1;
@@ -235,6 +239,7 @@ public class MindMap extends Activity
 
     // onBackPressed
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed()
     {
         NodeData<?> root = tree.getRootNode();
@@ -490,47 +495,62 @@ public class MindMap extends Activity
     // openFile
     private void openFile(Uri uri)
     {
-        StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader
-             (new InputStreamReader(new BufferedInputStream
-               (getContentResolver().openInputStream(uri)))))
+        try (JsonReader reader = new JsonReader(new InputStreamReader
+              (getContentResolver().openInputStream(uri))))
         {
-            String line;
-            while ((line = reader.readLine()) != null)
+            reader.beginObject();
+            while (reader.hasNext())
             {
-                builder.append(line);
-                builder.append(System.getProperty("line.separator"));
+                switch (reader.nextName())
+                {
+                case CONTENT:
+                    if (!TAG.equals(reader.nextString()))
+                        throw new Exception
+                            (getResources().getString(R.string.invalid));
+                    tree = new Tree<>(this);
+                    mindMapView.setTree(tree);
+                    mindMapView.initialize();
+                    break;
+
+                case ROOT:
+                    NodeData<?> root = tree.getRootNode();
+                    mindMapView.getMindMapManager().setSelectedNode(root);
+                    mindMapView.editNodeText(reader.nextString());
+                    break;
+
+                case NODES:
+                    reader.beginArray();
+                    while (reader.hasNext())
+                    {
+                        String id = null;
+                        String parentId = null;
+                        String content = null;
+                        reader.beginObject();
+                        while (reader.hasNext())
+                        {
+                            switch (reader.nextName())
+                            {
+                            case ID:
+                                id = reader.nextString();
+                                break;
+
+                            case PARENT:
+                                parentId = reader.nextString();
+                                break;
+
+                            case CONTENT:
+                                content = reader.nextString();
+                                break;
+                            }
+                        }
+                        reader.endObject();
+                        tree.addNode(id, parentId, content);
+                    }
+                    reader.endArray();
+                }
             }
-        }
-
-        catch (Exception e)
-        {
-            alertDialog(R.string.appName, e.getMessage());
-            e.printStackTrace();
-        }
-
-        try
-        {
-            JSONObject object = new JSONObject(builder.toString());
-            if (!TAG.equals(object.getString(CONTENT)))
-                throw new Exception(getResources().getString(R.string.invalid));
-
-            tree = new Tree<>(this);
-            mindMapView.setTree(tree);
-            mindMapView.initialize();
-            NodeData<?> root = tree.getRootNode();
-            mindMapView.getMindMapManager().setSelectedNode(root);
-            mindMapView.editNodeText(object.getString(root.getId()));
-            JSONArray array = object.getJSONArray(NODES);
-            for (int i = 0; i < array.length(); i++)
-            {
-                JSONObject node = array.getJSONObject(i);
-                String id = node.getString(ID);
-                String parentId = node.getString(PARENT);
-                String content = node.getString(CONTENT);
-                tree.addNode(id, parentId, content);
-            }
-
+            reader.endObject();
+            setTitle(queryName(uri));
             recreate();
         }
 
@@ -597,6 +617,26 @@ public class MindMap extends Activity
         writer.endObject();
         for (String child: node.getChildren())
             saveNodes(writer, child);
+    }
+
+    // queryName
+    private String queryName(Uri uri)
+    {
+        String[] projection = new String[] {OpenableColumns.DISPLAY_NAME};
+        try (Cursor cursor =
+             getContentResolver().query(uri, projection, null, null, null))
+        {
+            if (cursor != null)
+            {
+                cursor.moveToFirst();
+                String name = cursor.getString(0);
+                cursor.close();
+                return name;
+            }
+        }
+
+        catch (Exception e) {}
+        return null;
     }
 
     // Node
