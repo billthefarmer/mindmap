@@ -70,6 +70,7 @@ public class MindMap extends Activity
     public static final String TAG = "MindMap";
 
     public static final String ID = "id";
+    public static final String NAME = "name";
     public static final String ROOT = "root";
     public static final String NODES = "nodes";
     public static final String PARENT = "parent";
@@ -85,6 +86,8 @@ public class MindMap extends Activity
     private Tree<Node> tree;
     private Node selectedNode;
 
+    private String name = TAG;
+
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -96,6 +99,16 @@ public class MindMap extends Activity
         tree = new Tree<>(this);
         mindMapView.setTree(tree);
         mindMapView.initialize();
+
+        if (savedInstanceState == null)
+        {
+            Intent intent = getIntent();
+
+            // Check action
+            if (Intent.ACTION_VIEW.equals(intent.getAction()) ||
+                Intent.ACTION_EDIT.equals(intent.getAction()))
+                openFile(intent.getData());
+        }
 
         mindMapView.setNodeClickListener((NodeData<?> node) ->
         {
@@ -110,6 +123,9 @@ public class MindMap extends Activity
     public void onRestoreInstanceState(Bundle savedInstanceState)
     {
         super.onRestoreInstanceState(savedInstanceState);
+
+        name = savedInstanceState.getString(NAME);
+        setTitle(name);
 
         NodeData<?> root = tree.getRootNode();
         mindMapView.getMindMapManager().setSelectedNode(root);
@@ -149,6 +165,7 @@ public class MindMap extends Activity
     {
         super.onSaveInstanceState(outState);
 
+        outState.putString(NAME, name);
         NodeData<?> root = tree.getRootNode();
         outState.putString(root.getId(), root.getDescription());
         ArrayList<String> list = new ArrayList<>();
@@ -190,6 +207,24 @@ public class MindMap extends Activity
         menu.findItem(R.id.action_edit).setVisible(selectedNode != null);
 
         return true;
+    }
+
+    // onNewIntent
+    @Override
+    public void onNewIntent(Intent intent)
+    {
+        // Check if we have a tree
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+            alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
+        {
+            switch(id)
+            {
+            case DialogInterface.BUTTON_POSITIVE:
+                openFile(intent.getData());
+                break;
+            }
+        });
     }
 
     // On options item selected
@@ -465,7 +500,7 @@ public class MindMap extends Activity
     // openFile
     private void openFile()
     {
-
+        // Check if we have a tree
         NodeData<?> root = tree.getRootNode();
         if (!root.getChildren().isEmpty())
             alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
@@ -550,7 +585,7 @@ public class MindMap extends Activity
                 }
             }
             reader.endObject();
-            setTitle(queryName(uri));
+            name = (queryName(uri)).replace(".json", "");
             recreate();
         }
 
@@ -567,7 +602,7 @@ public class MindMap extends Activity
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType(APPLICATION_JSON);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE, TAG);
+        intent.putExtra(Intent.EXTRA_TITLE, name);
         startActivityForResult(intent, CREATE_DOCUMENT);
     }
 
