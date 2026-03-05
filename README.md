@@ -25,14 +25,25 @@ Not all items may appear, depending on node selection.
 Most of the entries will pop up a dialog either prompting for a new
 description, or checking that you want to remove something.
 
+## Panning and Zooming
+The app responds to panning and zooming gestures. You may restore the
+default display by tapping the **Fit** button. There are some
+idiosyncrasies of the [library](https://github.com/hegleB/MindMapView)
+used. When loading a file or rotating the device the nodes will appear
+to zoom out of the top left corner of the display. If you drag the
+nodes around the display, they will be restored to where they *should*
+be. The fit button doesn't always get it exactly right. The default
+position of the root node should be more to the left so as to centre
+the shole tree.
+
 ## Saving and opening files
 When you save a file, the chooser will give you an opportunity to
 change the file name, which will default to **MindMap**, unless you
-have opened a file with a different name. You can also click on an
-existing file to overwrite it. If you just click on the **Save**
-button, the chooser will create a series of versions &ndash;
-**MindMap(1)**, **MindMap(2)** etc. This may vary with different
-devices or different versions of Android.
+have opened a file with a different name. You can also tap on an
+existing file to overwrite it. If you just tap on the **Save** button,
+the chooser will create a series of versions &ndash; **MindMap(1)**,
+**MindMap(2)** etc. This may vary with different devices or different
+versions of Android.
 
 If you open a [JSON](https://www.json.org/json-en.html) file in a file
 manager, or share one from another app, MindMap will attempt to open
