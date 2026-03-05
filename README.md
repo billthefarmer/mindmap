@@ -34,7 +34,7 @@ to zoom out of the top left corner of the display. If you drag the
 nodes around the display, they will be restored to where they *should*
 be. The fit button doesn't always get it exactly right. The default
 position of the root node should be more to the left so as to centre
-the shole tree.
+the whole tree.
 
 ## Saving and opening files
 When you save a file, the chooser will give you an opportunity to
