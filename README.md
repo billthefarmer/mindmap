@@ -55,7 +55,6 @@ The mindmap files contain text in the
 [JSON](https://www.json.org/json-en.html) format, so they can be
 edited with care with a text editor. This is the file from the mindmap
 above.
-
 ```json
 {"content":"MindMap","root":"Develop apps","nodes":[{"id":"fd9899ed-ce26-4d64-86dd-9946a79c7907","parent":"root","content":"Get a computer"},{"id":"ee3810cf-4bbe-4d15-b962-64db5aabd301","parent":"fd9899ed-ce26-4d64-86dd-9946a79c7907","content":"Do you have the funds?"},{"id":"6bb727e6-2cd9-4544-a2b3-a79c3815bfcc","parent":"fd9899ed-ce26-4d64-86dd-9946a79c7907","content":"What should you buy?"},{"id":"29981b1f-04d0-4951-bf8e-ff426fe04a8e","parent":"root","content":"Get the tools"},{"id":"b91c3d8a-b30e-44df-965f-49095f2dc5e9","parent":"29981b1f-04d0-4951-bf8e-ff426fe04a8e","content":"JDK"},{"id":"30082cbb-7f9e-45ce-a327-344a36a0a815","parent":"29981b1f-04d0-4951-bf8e-ff426fe04a8e","content":"Android SDK"},{"id":"b1ee6dab-5242-479c-a75a-8fd72f874971","parent":"29981b1f-04d0-4951-bf8e-ff426fe04a8e","content":"Editor?"},{"id":"522e8cb7-67f0-4dae-ab1e-47af94c238ff","parent":"b1ee6dab-5242-479c-a75a-8fd72f874971","content":"Emacs"},{"id":"8c7055fb-5db8-43d1-a424-4d898da67005","parent":"b1ee6dab-5242-479c-a75a-8fd72f874971","content":"Vim"},{"id":"c772c5c2-de96-4241-b745-a72f041ab847","parent":"b1ee6dab-5242-479c-a75a-8fd72f874971","content":"Notepad"},{"id":"34c54758-6c51-49d6-900d-89955cca71f6","parent":"root","content":"Well?"}]}
 ```
