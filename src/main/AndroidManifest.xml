@@ -15,7 +15,8 @@
 
     <activity
         android:name="MindMap"
-        android:exported="true">
+        android:exported="true"
+        android:launchMode="singleTask">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
@@ -29,11 +30,11 @@
         <data android:mimeType="application/json" />
       </intent-filter>
     </activity>
-    <!--
+
     <activity
         android:name="Help"
         android:windowSoftInputMode="stateHidden" />
-    -->
-</application>
+
+  </application>
 
 </manifest>

@@ -5,6 +5,12 @@
     tools:ignore="AlwaysShowAction">
 
   <item
+      android:id="@+id/action_new"
+      android:icon="@drawable/ic_new_white_24dp"
+      android:showAsAction="always"
+      android:title="@string/newTree" />
+
+  <item
       android:id="@+id/action_add"
       android:icon="@drawable/ic_add_white_24dp"
       android:showAsAction="always"
@@ -19,7 +25,7 @@
   <item
       android:id="@+id/action_edit"
       android:icon="@drawable/ic_edit_white_24dp"
-      android:showAsAction="always"
+      android:showAsAction="ifRoom"
       android:title="@string/edit" />
 
   <item

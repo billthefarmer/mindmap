@@ -15,6 +15,7 @@ mindmaps.
 ## Toolbar
 Not all items may appear, depending on node selection.
 
+* **New** &ndash; Create a new mindmap
 * **Add** &ndash; Add a new node
 * **Remove** &ndash; Remove a node
 * **Edit** &ndash; Edit the description

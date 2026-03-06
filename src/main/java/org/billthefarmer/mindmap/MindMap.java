@@ -33,6 +33,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.text.SpannableStringBuilder;
+import android.text.method.LinkMovementMethod;
 import android.util.JsonWriter;
 import android.util.JsonReader;
 import android.util.Log;
@@ -41,7 +43,9 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toolbar;
 
 import com.mindsync.library.MindMapView;
 import com.mindsync.library.data.CirclePath;
@@ -53,19 +57,26 @@ import com.mindsync.library.data.RectangleNodeData;
 import com.mindsync.library.data.Tree;
 import com.mindsync.library.util.Dp;
 
+import java.text.DateFormat;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class MindMap extends Activity
+    implements PopupMenu.OnMenuItemClickListener
 {
     public static final String TAG = "MindMap";
 
@@ -83,6 +94,7 @@ public class MindMap extends Activity
     public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
+    private Toolbar toolbar;
     private Tree<Node> tree;
     private Node selectedNode;
 
@@ -94,8 +106,21 @@ public class MindMap extends Activity
 
         // inflate and create the view
         setContentView(R.layout.main);
-        mindMapView = findViewById(R.id.mind_map_view);
 
+        // Find toolbar
+        toolbar = findViewById(getResources().getIdentifier("action_bar",
+                                                            "id", "android"));
+        // Set up navigation
+        toolbar.setNavigationIcon(R.drawable.ic_menu_white_24dp);
+        toolbar.setNavigationOnClickListener((v) ->
+        {
+            PopupMenu popup = new PopupMenu(this, v);
+            popup.inflate(R.menu.navigation);
+            popup.setOnMenuItemClickListener(this);
+            popup.show();
+        });
+
+        mindMapView = findViewById(R.id.mind_map_view);
         // Create tree
         tree = new Tree<>(this);
         mindMapView.setTree(tree);
@@ -163,6 +188,8 @@ public class MindMap extends Activity
                     (() -> mindMapView.removeNode(), NODE_DELAY);
             }, NODE_DELAY);
         }
+        mindMapView.fitScreen();
+        invalidateOptionsMenu();
     }
 
     // onSaveInstanceState
@@ -210,6 +237,8 @@ public class MindMap extends Activity
     public boolean onPrepareOptionsMenu(Menu menu)
     {
         // Adjust the menu according to what is selected
+        menu.findItem(R.id.action_new)
+            .setVisible(!tree.getRootNode().getChildren().isEmpty());
         menu.findItem(R.id.action_add).setVisible(selectedNode != null);
         menu.findItem(R.id.action_remove)
             .setVisible(selectedNode != null && selectedNode.getId() !=
@@ -245,6 +274,11 @@ public class MindMap extends Activity
 	int id = item.getItemId();
 	switch (id)
 	{
+            // New
+        case R.id.action_new:
+            newTree();
+            break;
+
             // Add
         case R.id.action_add:
             add();
@@ -277,6 +311,29 @@ public class MindMap extends Activity
 
         default:
             return super.onOptionsItemSelected(item);
+        }
+
+        return true;
+    }
+
+    // onMenuItemClick
+    @Override
+    public boolean onMenuItemClick(MenuItem item)
+    {
+        // Get id
+        int id = item.getItemId();
+        switch (id)
+        {
+        case R.id.action_help:
+            help();
+            break;
+
+        case R.id.action_about:
+            about();
+            break;
+
+        default:
+            return false;
         }
 
         return true;
@@ -357,6 +414,26 @@ public class MindMap extends Activity
             saveState(outState, list, child);
     }
 
+    // new
+    private void newTree()
+    {
+        // Check if we have a tree
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+            alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
+        {
+            switch(id)
+            {
+            case DialogInterface.BUTTON_POSITIVE:
+                tree = new Tree<>(this);
+                mindMapView.setTree(tree);
+                mindMapView.initialize();
+                recreate();
+                break;
+            }
+        });
+    }
+
     // add
     private void add()
     {
@@ -374,6 +451,7 @@ public class MindMap extends Activity
             {
             case DialogInterface.BUTTON_POSITIVE:
                 mindMapView.removeNode();
+                invalidateOptionsMenu();
                 break;
             }
         });
@@ -393,6 +471,51 @@ public class MindMap extends Activity
         mindMapView.fitScreen();
     }
 
+    // help
+    private void help()
+    {
+        Intent intent = new Intent(this, Help.class);
+        startActivity(intent);
+    }
+
+    // about
+    @SuppressWarnings("deprecation")
+    private void about()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.appName);
+        builder.setIcon(R.drawable.ic_launcher);
+
+        DateFormat dateFormat = DateFormat.getDateTimeInstance();
+        SpannableStringBuilder spannable =
+            new SpannableStringBuilder(getText(R.string.version));
+        Pattern pattern = Pattern.compile("%s");
+        Matcher matcher = pattern.matcher(spannable);
+        if (matcher.find())
+            spannable.replace(matcher.start(), matcher.end(),
+                              BuildConfig.VERSION_NAME);
+        matcher.reset(spannable);
+        if (matcher.find())
+            spannable.replace(matcher.start(), matcher.end(),
+                              dateFormat.format(BuildConfig.BUILT));
+        builder.setMessage(spannable);
+
+        // Add the button
+        builder.setPositiveButton(android.R.string.ok, null);
+
+        // Create the AlertDialog
+        Dialog dialog = builder.show();
+
+        // Set movement method
+        TextView text = dialog.findViewById(android.R.id.message);
+        if (text != null)
+        {
+            text.setTextAppearance(builder.getContext(),
+                                   android.R.style.TextAppearance_Small);
+            text.setMovementMethod(LinkMovementMethod.getInstance());
+        }
+    }
+
     // addDialog
     private void addDialog(int title, int message)
     {
@@ -405,6 +528,7 @@ public class MindMap extends Activity
         {
             TextView desc = ((Dialog)dialog).findViewById(R.id.description);
             mindMapView.addNode(desc.getText().toString());
+            invalidateOptionsMenu();
         });
         builder.setNegativeButton(android.R.string.cancel, null);
 
@@ -432,6 +556,7 @@ public class MindMap extends Activity
         {
             TextView desc = ((Dialog)dialog).findViewById(R.id.description);
             mindMapView.editNodeText(desc.getText().toString());
+            invalidateOptionsMenu();
         });
         builder.setNegativeButton(android.R.string.cancel, null);
 
