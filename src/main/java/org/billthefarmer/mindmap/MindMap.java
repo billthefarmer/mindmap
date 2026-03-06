@@ -96,10 +96,12 @@ public class MindMap extends Activity
         setContentView(R.layout.main);
         mindMapView = findViewById(R.id.mind_map_view);
 
+        // Create tree
         tree = new Tree<>(this);
         mindMapView.setTree(tree);
         mindMapView.initialize();
 
+        // Check if we have a file
         if (savedInstanceState == null)
         {
             Intent intent = getIntent();
@@ -110,11 +112,11 @@ public class MindMap extends Activity
                 openFile(intent.getData());
         }
 
+        // Check for selected node
         mindMapView.setNodeClickListener((NodeData<?> node) ->
         {
             selectedNode = createNode(node);
             invalidateOptionsMenu();
-            // ...
         });
     }
 
@@ -124,12 +126,15 @@ public class MindMap extends Activity
     {
         super.onRestoreInstanceState(savedInstanceState);
 
+        // Get the map name
         name = savedInstanceState.getString(NAME);
         setTitle(name);
 
+        // Get the root node name
         NodeData<?> root = tree.getRootNode();
         mindMapView.getMindMapManager().setSelectedNode(root);
         mindMapView.editNodeText(savedInstanceState.getString(root.getId()));
+        // Get the nodes
         List<String> list = savedInstanceState.getStringArrayList(NODES);
         if (list != null)
         {
@@ -146,6 +151,7 @@ public class MindMap extends Activity
                 String content = bundle.getString(CONTENT);
                 tree.addNode(id, parentId, content);
             }
+            // Jiggery pokery to restore the display
             mindMapView.animateTreeChange();
             mindMapView.requestLayout();
             mindMapView.postDelayed(() ->
@@ -165,9 +171,12 @@ public class MindMap extends Activity
     {
         super.onSaveInstanceState(outState);
 
+        // Save the map name
         outState.putString(NAME, name);
+        // Save the root node name
         NodeData<?> root = tree.getRootNode();
         outState.putString(root.getId(), root.getDescription());
+        // Save the nodes
         ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
         {
@@ -200,6 +209,7 @@ public class MindMap extends Activity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
+        // Adjust the menu according to what is selected
         menu.findItem(R.id.action_add).setVisible(selectedNode != null);
         menu.findItem(R.id.action_remove)
             .setVisible(selectedNode != null && selectedNode.getId() !=
@@ -277,6 +287,7 @@ public class MindMap extends Activity
     @SuppressWarnings("deprecation")
     public void onBackPressed()
     {
+        // Check if we have a tree
         NodeData<?> root = tree.getRootNode();
         if (!root.getChildren().isEmpty())
         {
@@ -334,12 +345,14 @@ public class MindMap extends Activity
     // saveState
     private void  saveState(Bundle outState, List<String> list, String id)
     {
+        // Save a node
         list.add(id);
         NodeData<?> node = tree.getNode(id);
         Bundle bundle = new Bundle();
         bundle.putString(PARENT, node.getParentId());
         bundle.putString(CONTENT, node.getDescription());
         outState.putBundle(id, bundle);
+        // And child nodes
         for (String child: node.getChildren())
             saveState(outState, list, child);
     }
@@ -347,12 +360,14 @@ public class MindMap extends Activity
     // add
     private void add()
     {
+        // Show dialog
         addDialog(R.string.addNode, R.string.nodeDesc);
     }
 
     // remove
     private void remove()
     {
+        // Show dialog
         alertDialog(R.string.remNode, R.string.nodeRem, (dialog, id) ->
         {
             switch(id)
@@ -367,6 +382,7 @@ public class MindMap extends Activity
     // edit
     private void edit()
     {
+        // Show dialog
         descriptionDialog(R.string.editNode, R.string.nodeDesc,
                           selectedNode.getDescription());
     }
@@ -539,6 +555,7 @@ public class MindMap extends Activity
                 switch (reader.nextName())
                 {
                 case CONTENT:
+                    // Check it's a MindMap file
                     if (!TAG.equals(reader.nextString()))
                         throw new Exception
                             (getResources().getString(R.string.invalid));
@@ -548,12 +565,14 @@ public class MindMap extends Activity
                     break;
 
                 case ROOT:
+                    // Get the root node description
                     NodeData<?> root = tree.getRootNode();
                     mindMapView.getMindMapManager().setSelectedNode(root);
                     mindMapView.editNodeText(reader.nextString());
                     break;
 
                 case NODES:
+                    // Get the nodes
                     reader.beginArray();
                     while (reader.hasNext())
                     {
@@ -585,7 +604,9 @@ public class MindMap extends Activity
                 }
             }
             reader.endObject();
+            // Get the name
             name = (queryName(uri)).replace(".json", "");
+            // Force redisplay
             recreate();
         }
 
@@ -613,11 +634,15 @@ public class MindMap extends Activity
               (getContentResolver().openOutputStream(uri, "rwt"))))
         {
             writer.beginObject();
+            // Save the file marker
             writer.name(CONTENT).value(TAG);
+            // Save the root node name
             NodeData<?> root = tree.getRootNode();
             writer.name(root.getId()).value(root.getDescription());
             writer.name(NODES);
+            // Save the nodes
             writer.beginArray();
+            // Child nodes
             for (String id: root.getChildren())
             {
                 NodeData<?> node = tree.getNode(id);
@@ -626,6 +651,7 @@ public class MindMap extends Activity
                 writer.name(PARENT).value(node.getParentId());
                 writer.name(CONTENT).value(node.getDescription());
                 writer.endObject();
+                // Child nodes
                 for (String child: node.getChildren())
                     saveNodes(writer, child);
             }
@@ -644,12 +670,14 @@ public class MindMap extends Activity
     private void saveNodes(JsonWriter writer, String id)
         throws Exception
     {
+        // Save a node
         NodeData<?> node = tree.getNode(id);
         writer.beginObject();
         writer.name(ID).value(node.getId());
         writer.name(PARENT).value(node.getParentId());
         writer.name(CONTENT).value(node.getDescription());
         writer.endObject();
+        // Child nodes
         for (String child: node.getChildren())
             saveNodes(writer, child);
     }
@@ -657,6 +685,7 @@ public class MindMap extends Activity
     // queryName
     private String queryName(Uri uri)
     {
+        // Get the uri display name
         String[] projection = new String[] {OpenableColumns.DISPLAY_NAME};
         try (Cursor cursor =
              getContentResolver().query(uri, projection, null, null, null))
