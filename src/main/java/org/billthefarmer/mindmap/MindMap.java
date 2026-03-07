@@ -157,18 +157,18 @@ public class MindMap extends Activity
         name = savedInstanceState.getString(NAME);
         setTitle(name);
 
-        NodeData<?> root = (NodeData)savedInstanceState.getSerializable
+        Node root = (Node)savedInstanceState.getSerializable
             (tree.getRootNode().getId());
-        tree.setRootNode(root);
+        tree.setRootNode(createNodeData(root));
         // Get the nodes
         List<String> list = savedInstanceState.getStringArrayList(NODES);
         if (list != null)
         {
             for (String id: list)
             {
-                NodeData<?> node =
-                    (NodeData)savedInstanceState.getSerializable(id);
-                tree.setNode(id, node);
+                Node node =
+                    (Node)savedInstanceState.getSerializable(id);
+                tree.setNode(id, createNodeData(node));
             }
             // Jiggery pokery to restore the display
             mindMapView.animateTreeChange();
@@ -199,7 +199,7 @@ public class MindMap extends Activity
         if (root.getChildren().isEmpty())
             return;
         Log.d(TAG, "Node " + root.getId());
-        outState.putSerializable(root.getId(), root);
+        outState.putSerializable(root.getId(), createNode(root));
         // Save the nodes
         ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
@@ -207,7 +207,7 @@ public class MindMap extends Activity
             Log.d(TAG, "Node " + id);
             list.add(id);
             NodeData<?> node = tree.getNode(id);
-            outState.putSerializable(id, node);
+            outState.putSerializable(id, createNode(node));
             for (String child: node.getChildren())
                 saveState(outState, list, child);
         }
@@ -401,7 +401,7 @@ public class MindMap extends Activity
         // Save a node
         list.add(id);
         NodeData<?> node = tree.getNode(id);
-        outState.putSerializable(id, node);
+        outState.putSerializable(id, createNode(node));
         // And child nodes
         for (String child: node.getChildren())
             saveState(outState, list, child);
@@ -931,7 +931,8 @@ public class MindMap extends Activity
         }
 
         @Override
-        public CircleNode adjustPosition(Float horizontalSpacing, Float totalHeight)
+        public CircleNode adjustPosition(Float horizontalSpacing,
+                                         Float totalHeight)
         {
             Circle newPath = getPath().adjustPath(horizontalSpacing,
                                                   totalHeight);
@@ -1014,7 +1015,7 @@ public class MindMap extends Activity
                                  Float totalHeight)
         {
             return new Circle(centreX, centreY + horizontalSpacing,
-                              totalHeight / 2);                     
+                              totalHeight / 2);
         }
     }
 
@@ -1048,7 +1049,7 @@ public class MindMap extends Activity
                                     Float totalHeight)
         {
             return new Rectangle(centreX, centreY + horizontalSpacing,
-                                 width, totalHeight);                     
+                                 width, totalHeight);
         }
     }
 }
