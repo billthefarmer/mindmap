@@ -63,6 +63,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -147,6 +148,7 @@ public class MindMap extends Activity
 
     // onRestoreInstanceState
     @Override
+    @SuppressWarnings("deprecation")
     public void onRestoreInstanceState(Bundle savedInstanceState)
     {
         super.onRestoreInstanceState(savedInstanceState);
@@ -155,26 +157,18 @@ public class MindMap extends Activity
         name = savedInstanceState.getString(NAME);
         setTitle(name);
 
-        // Get the root node name
-        NodeData<?> root = tree.getRootNode();
-        mindMapView.getMindMapManager().setSelectedNode(root);
-        mindMapView.editNodeText(savedInstanceState.getString(root.getId()));
+        NodeData<?> root = (NodeData)savedInstanceState.getSerializable
+            (tree.getRootNode().getId());
+        tree.setRootNode(root);
         // Get the nodes
         List<String> list = savedInstanceState.getStringArrayList(NODES);
         if (list != null)
         {
             for (String id: list)
             {
-                if (id == root.getId())
-                    continue;
-
-                Bundle bundle = savedInstanceState.getBundle(id);
-                if (bundle == null)
-                    continue;
-
-                String parentId = bundle.getString(PARENT);
-                String content = bundle.getString(CONTENT);
-                tree.addNode(id, parentId, content);
+                NodeData<?> node =
+                    (NodeData)savedInstanceState.getSerializable(id);
+                tree.setNode(id, node);
             }
             // Jiggery pokery to restore the display
             mindMapView.animateTreeChange();
@@ -200,19 +194,20 @@ public class MindMap extends Activity
 
         // Save the map name
         outState.putString(NAME, name);
-        // Save the root node name
+        // Save the root node
         NodeData<?> root = tree.getRootNode();
-        outState.putString(root.getId(), root.getDescription());
+        if (root.getChildren().isEmpty())
+            return;
+        Log.d(TAG, "Node " + root.getId());
+        outState.putSerializable(root.getId(), root);
         // Save the nodes
         ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
         {
+            Log.d(TAG, "Node " + id);
             list.add(id);
             NodeData<?> node = tree.getNode(id);
-            Bundle bundle = new Bundle();
-            bundle.putString(PARENT, node.getParentId());
-            bundle.putString(CONTENT, node.getDescription());
-            outState.putBundle(id, bundle);
+            outState.putSerializable(id, node);
             for (String child: node.getChildren())
                 saveState(outState, list, child);
         }
@@ -402,13 +397,11 @@ public class MindMap extends Activity
     // saveState
     private void  saveState(Bundle outState, List<String> list, String id)
     {
+        Log.d(TAG, "Node " + id);
         // Save a node
         list.add(id);
         NodeData<?> node = tree.getNode(id);
-        Bundle bundle = new Bundle();
-        bundle.putString(PARENT, node.getParentId());
-        bundle.putString(CONTENT, node.getDescription());
-        outState.putBundle(id, bundle);
+        outState.putSerializable(id, node);
         // And child nodes
         for (String child: node.getChildren())
             saveState(outState, list, child);
@@ -428,6 +421,8 @@ public class MindMap extends Activity
                 tree = new Tree<>(this);
                 mindMapView.setTree(tree);
                 mindMapView.initialize();
+                name = TAG;
+                setTitle(name);
                 recreate();
                 break;
             }
@@ -602,42 +597,6 @@ public class MindMap extends Activity
         builder.show();
     }
 
-    // createNode
-    public Node createNode(NodeData<?> node)
-    {
-        if (node instanceof CircleNodeData)
-        {
-            CircleNodeData circleNodeData = (CircleNodeData) node;
-            return new CircleNode(
-                circleNodeData.getId(),
-                circleNodeData.getParentId(),
-                new CirclePath(
-                    new Dp(circleNodeData.getPath().getCenterX().getDpVal()),
-                    new Dp(circleNodeData.getPath().getCenterY().getDpVal()),
-                    new Dp(circleNodeData.getPath().getRadius().getDpVal())),
-                circleNodeData.getDescription(),
-                circleNodeData.getChildren());
-            }
-
-        else if (node instanceof RectangleNodeData)
-        {
-            RectangleNodeData rectangleNodeData = (RectangleNodeData) node;
-            return new RectangleNode(
-                rectangleNodeData.getId(),
-                rectangleNodeData.getParentId(),
-                new RectanglePath(
-                    new Dp(rectangleNodeData.getPath().getCenterX().getDpVal()),
-                    new Dp(rectangleNodeData.getPath().getCenterY().getDpVal()),
-                    new Dp(rectangleNodeData.getPath().getWidth().getDpVal()),
-                    new Dp(rectangleNodeData.getPath().getHeight().getDpVal())),
-                rectangleNodeData.getDescription(),
-                rectangleNodeData.getChildren());
-        }
-
-        else
-            return null;
-    }
-
     // openFile
     private void openFile()
     {
@@ -649,6 +608,11 @@ public class MindMap extends Activity
             switch(id)
             {
             case DialogInterface.BUTTON_POSITIVE:
+                tree = new Tree<>(this);
+                mindMapView.setTree(tree);
+                mindMapView.initialize();
+                name = TAG;
+                setTitle(name);
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.setType(APPLICATION_JSON);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -731,6 +695,7 @@ public class MindMap extends Activity
             reader.endObject();
             // Get the name
             name = (queryName(uri)).replace(".json", "");
+            setTitle(name);
             // Force redisplay
             recreate();
         }
@@ -828,17 +793,92 @@ public class MindMap extends Activity
         return null;
     }
 
+    // createNode
+    public Node createNode(NodeData<?> node)
+    {
+        if (node instanceof CircleNodeData)
+        {
+            CircleNodeData circleNodeData = (CircleNodeData) node;
+            return new CircleNode(
+                circleNodeData.getId(),
+                circleNodeData.getParentId(),
+                new Circle(
+                    circleNodeData.getPath().getCenterX().getDpVal(),
+                    circleNodeData.getPath().getCenterY().getDpVal(),
+                    circleNodeData.getPath().getRadius().getDpVal()),
+                circleNodeData.getDescription(),
+                circleNodeData.getChildren());
+            }
+
+        else if (node instanceof RectangleNodeData)
+        {
+            RectangleNodeData rectangleNodeData = (RectangleNodeData) node;
+            return new RectangleNode(
+                rectangleNodeData.getId(),
+                rectangleNodeData.getParentId(),
+                new Rectangle(
+                    rectangleNodeData.getPath().getCenterX().getDpVal(),
+                    rectangleNodeData.getPath().getCenterY().getDpVal(),
+                    rectangleNodeData.getPath().getWidth().getDpVal(),
+                    rectangleNodeData.getPath().getHeight().getDpVal()),
+                rectangleNodeData.getDescription(),
+                rectangleNodeData.getChildren());
+        }
+
+        else
+            return null;
+    }
+
+    // createNodeData
+    public NodeData createNodeData(Node node)
+    {
+        if (node instanceof CircleNode)
+        {
+            CircleNode circleNode = (CircleNode) node;
+            return new CircleNodeData(
+                circleNode.getId(),
+                circleNode.getParentId(),
+                new CirclePath(
+                    new Dp(circleNode.getPath().getCentreX()),
+                    new Dp(circleNode.getPath().getCentreY()),
+                    new Dp(circleNode.getPath().getRadius())),
+                circleNode.getDescription(),
+                circleNode.getChildren(),
+                0f, false, false, 1f);
+        }
+
+        else if (node instanceof RectangleNode)
+        {
+            RectangleNode rectangleNode = (RectangleNode) node;
+            return new RectangleNodeData(
+                rectangleNode.getId(),
+                rectangleNode.getParentId(),
+                new RectanglePath(
+                    new Dp(rectangleNode.getPath().getCentreX()),
+                    new Dp(rectangleNode.getPath().getCentreY()),
+                    new Dp(rectangleNode.getPath().getWidth()),
+                    new Dp(rectangleNode.getPath().getHeight())),
+                rectangleNode.getDescription(),
+                rectangleNode.getChildren(),
+                0f, false, false, 1f);
+        }
+
+        else
+            return null;
+    }
+
     // Node
     abstract class Node
+        implements Serializable
     {
-        protected final String id;
-        protected final String parentId;
-        protected final NodePath path;
-        protected final String description;
-        protected final List<String> children;
+        public final String id;
+        public final String parentId;
+        public final Path path;
+        public final String description;
+        public final List<String> children;
 
-    public Node(String id, String parentId, NodePath path,
-                String description, List<String> children)
+        public Node(String id, String parentId, Path path,
+                    String description, List<String> children)
         {
             this.id = id;
             this.parentId = parentId;
@@ -857,7 +897,7 @@ public class MindMap extends Activity
             return parentId;
         }
 
-        public NodePath getPath()
+        public Path getPath()
         {
             return path;
         }
@@ -872,29 +912,29 @@ public class MindMap extends Activity
             return children;
         }
 
-        public abstract Node adjustPosition(Dp horizontalSpacing,
-                                            Dp totalHeight);
+        public abstract Node adjustPosition(Float horizontalSpacing,
+                                            Float totalHeight);
     }
 
     // CircleNode
     final class CircleNode extends Node
     {
-        public CircleNode(String id, String parentId, CirclePath path,
+        public CircleNode(String id, String parentId, Circle path,
                           String description, List<String> children)
         {
             super(id, parentId, path, description, children);
         }
 
         @Override
-        public CirclePath getPath() {
-            return (CirclePath) path;
+        public Circle getPath() {
+            return (Circle) path;
         }
 
         @Override
-        public CircleNode adjustPosition(Dp horizontalSpacing, Dp totalHeight)
+        public CircleNode adjustPosition(Float horizontalSpacing, Float totalHeight)
         {
-            CirclePath newPath = getPath().adjustPath(horizontalSpacing,
-                                                      totalHeight);
+            Circle newPath = getPath().adjustPath(horizontalSpacing,
+                                                  totalHeight);
             return new CircleNode(id, parentId, newPath, description, children);
         }
     }
@@ -902,26 +942,113 @@ public class MindMap extends Activity
     // RectangleNode
     final class RectangleNode extends Node
     {
-        public RectangleNode(String id, String parentId, RectanglePath path,
+        public RectangleNode(String id, String parentId, Rectangle path,
                              String description, List<String> children)
         {
             super(id, parentId, path, description, children);
         }
 
         @Override
-        public RectanglePath getPath()
+        public Rectangle getPath()
         {
-            return (RectanglePath) path;
+            return (Rectangle) path;
         }
 
         @Override
-        public RectangleNode adjustPosition(Dp horizontalSpacing,
-                                            Dp totalHeight)
+        public RectangleNode adjustPosition(Float horizontalSpacing,
+                                            Float totalHeight)
         {
-            RectanglePath newPath = getPath().adjustPath(horizontalSpacing,
-                                                         totalHeight);
+            Rectangle newPath = getPath().adjustPath(horizontalSpacing,
+                                                     totalHeight);
             return new RectangleNode(id, parentId, newPath, description,
                                      children);
+        }
+    }
+
+    // Path
+    abstract class Path
+        implements Serializable
+    {
+        public final Float centreX;
+        public final Float centreY;
+
+        public Path(Float centreX, Float centreY)
+        {
+            this.centreX = centreX;
+            this.centreY = centreY;
+        }
+
+        public Float getCentreX()
+        {
+            return centreX;
+        }
+
+        public Float getCentreY()
+        {
+            return centreY;
+        }
+
+        public abstract Path adjustPath(Float horizontalSpacing,
+                                        Float totalHeight);
+    }
+
+    // Circle
+    final class Circle
+        extends Path
+    {
+        public final Float radius;
+
+        public Circle(Float centreX, Float centreY, Float radius)
+        {
+            super(centreX, centreY);
+            this.radius = radius;
+        }
+
+        public Float getRadius()
+        {
+            return radius;
+        }
+
+        @Override
+        public Circle adjustPath(Float horizontalSpacing,
+                                 Float totalHeight)
+        {
+            return new Circle(centreX, centreY + horizontalSpacing,
+                              totalHeight / 2);                     
+        }
+    }
+
+    // Rectangle
+    final class Rectangle
+        extends Path
+    {
+        public final Float width;
+        public final Float height;
+
+        public Rectangle(Float centreX, Float centreY,
+                         Float width, Float height)
+        {
+            super(centreX, centreY);
+            this.width = width;
+            this.height = height;
+        }
+
+        public Float getWidth()
+        {
+            return width;
+        }
+
+        public Float getHeight()
+        {
+            return height;
+        }
+
+        @Override
+        public Rectangle adjustPath(Float horizontalSpacing,
+                                    Float totalHeight)
+        {
+            return new Rectangle(centreX, centreY + horizontalSpacing,
+                                 width, totalHeight);                     
         }
     }
 }
