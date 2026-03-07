@@ -196,8 +196,6 @@ public class MindMap extends Activity
         outState.putString(NAME, name);
         // Save the root node
         NodeData<?> root = tree.getRootNode();
-        if (root.getChildren().isEmpty())
-            return;
         Log.d(TAG, "Node " + root.getId());
         outState.putSerializable(root.getId(), createNode(root));
         // Save the nodes
