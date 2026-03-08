@@ -63,9 +63,9 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.Serializable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,10 +83,12 @@ public class MindMap extends Activity
 
     public static final String ID = "id";
     public static final String NAME = "name";
+    public static final String PATH = "path";
     public static final String ROOT = "root";
     public static final String NODES = "nodes";
     public static final String PARENT = "parent";
     public static final String CONTENT = "content";
+    public static final String CHILDREN = "children";
 
     public static final String APPLICATION_JSON = "application/json";
 
@@ -157,22 +159,33 @@ public class MindMap extends Activity
         name = savedInstanceState.getString(NAME);
         setTitle(name);
 
-        Node root = (Node)savedInstanceState.getSerializable
-            (tree.getRootNode().getId());
-        tree.setRootNode(createNodeData(root));
+        NodeData<?> root = tree.getRootNode();
+        Bundle bundle = savedInstanceState
+            .getBundle(root.getId());
+        tree.updateNode(root.getId(),
+                        bundle.getString(CONTENT),
+                        root.getChildren(),
+                        root.getPath().getCenterX(),
+                        root.getPath().getCenterY());
+        
         // Get the nodes
         List<String> list = savedInstanceState.getStringArrayList(NODES);
         if (list != null)
         {
             for (String id: list)
             {
-                Node node =
-                    (Node)savedInstanceState.getSerializable(id);
-                tree.setNode(id, createNodeData(node));
+                bundle = savedInstanceState.getBundle(id);
+                if (bundle == null)
+                    continue;
+
+                tree.addNode(id, bundle.getString(PARENT),
+                             bundle.getString(CONTENT));
             }
             // Jiggery pokery to restore the display
             mindMapView.animateTreeChange();
             mindMapView.requestLayout();
+            mindMapView.getMindMapManager()
+                .setSelectedNode(tree.getRootNode());
             mindMapView.postDelayed(() ->
             {
                 mindMapView.addNode(TAG);
@@ -194,18 +207,21 @@ public class MindMap extends Activity
 
         // Save the map name
         outState.putString(NAME, name);
-        // Save the root node
-        NodeData<?> root = tree.getRootNode();
+        Node root = createNode(tree.getRootNode());
+        Bundle bundle = new Bundle();
+        bundle.putString(CONTENT, root.getDescription());
+        outState.putBundle(root.getId(), bundle);
         Log.d(TAG, "Node " + root.getId());
-        outState.putSerializable(root.getId(), createNode(root));
-        // Save the nodes
         ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
         {
             Log.d(TAG, "Node " + id);
             list.add(id);
-            NodeData<?> node = tree.getNode(id);
-            outState.putSerializable(id, createNode(node));
+            Node node = createNode(tree.getNode(id));
+            bundle = new Bundle();
+            bundle.putString(PARENT, node.getParentId());
+            bundle.putString(CONTENT, node.getDescription());
+            outState.putBundle(node.getId(), bundle);
             for (String child: node.getChildren())
                 saveState(outState, list, child);
         }
@@ -398,8 +414,12 @@ public class MindMap extends Activity
         Log.d(TAG, "Node " + id);
         // Save a node
         list.add(id);
-        NodeData<?> node = tree.getNode(id);
-        outState.putSerializable(id, createNode(node));
+        Node node = createNode(tree.getNode(id));
+        Bundle bundle = new Bundle();
+        bundle.putString(PARENT, node.getParentId());
+        bundle.putString(CONTENT, node.getDescription());
+        outState.putBundle(node.getId(), bundle);
+        
         // And child nodes
         for (String child: node.getChildren())
             saveState(outState, list, child);
@@ -606,11 +626,6 @@ public class MindMap extends Activity
             switch(id)
             {
             case DialogInterface.BUTTON_POSITIVE:
-                tree = new Tree<>(this);
-                mindMapView.setTree(tree);
-                mindMapView.initialize();
-                name = TAG;
-                setTitle(name);
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.setType(APPLICATION_JSON);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -694,7 +709,6 @@ public class MindMap extends Activity
             // Get the name
             name = (queryName(uri)).replace(".json", "");
             setTitle(name);
-            // Force redisplay
             recreate();
         }
 
@@ -867,13 +881,12 @@ public class MindMap extends Activity
 
     // Node
     abstract class Node
-        implements Serializable
     {
         public final String id;
         public final String parentId;
         public final Path path;
         public final String description;
-        public final List<String> children;
+        public final ArrayList<String> children;
 
         public Node(String id, String parentId, Path path,
                     String description, List<String> children)
@@ -882,7 +895,7 @@ public class MindMap extends Activity
             this.parentId = parentId;
             this.path = path;
             this.description = description;
-            this.children = children;
+            this.children = new ArrayList<>(children);
         }
 
         public String getId()
@@ -966,7 +979,6 @@ public class MindMap extends Activity
 
     // Path
     abstract class Path
-        implements Serializable
     {
         public final Float centreX;
         public final Float centreY;
