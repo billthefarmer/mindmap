@@ -10,6 +10,9 @@
   <string name="fit">Fit</string>
   <string name="open">Open file</string>
   <string name="save">Save file</string>
+  <string name="share">Share</string>
+  <string name="image">Image</string>
+  <string name="json">JSON</string>
 
   <string name="addNode">Add node</string>
   <string name="node">Node</string>

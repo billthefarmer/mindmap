@@ -29,6 +29,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,6 +48,8 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
+import android.support.v4.content.FileProvider;
+
 import com.mindsync.library.MindMapView;
 import com.mindsync.library.data.CirclePath;
 import com.mindsync.library.data.CircleNodeData;
@@ -61,8 +64,12 @@ import java.text.DateFormat;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,6 +98,10 @@ public class MindMap extends Activity
     public static final String CHILDREN = "children";
 
     public static final String APPLICATION_JSON = "application/json";
+    public static final String IMAGE_PNG = "image/png";
+    public static final String MINDMAP_IMAGE = "Mindmap.png";
+    public static final String FILE_PROVIDER =
+        "org.billthefarmer.mindmap.fileprovider";
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
@@ -318,6 +329,16 @@ public class MindMap extends Activity
             saveFile();
             break;
 
+            // Share image
+        case R.id.action_share_image:
+            shareImage();
+            break;
+
+            // Share json
+        case R.id.action_share_json:
+            shareJson();
+            break;
+
         default:
             return super.onOptionsItemSelected(item);
         }
@@ -464,6 +485,7 @@ public class MindMap extends Activity
             {
             case DialogInterface.BUTTON_POSITIVE:
                 mindMapView.removeNode();
+                selectedNode = null;
                 invalidateOptionsMenu();
                 break;
             }
@@ -782,6 +804,88 @@ public class MindMap extends Activity
         // Child nodes
         for (String child: node.getChildren())
             saveNodes(writer, child);
+    }
+
+    // shareImage
+    @SuppressWarnings("deprecation")
+    private void shareImage()
+    {
+        try
+        {
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            String title = getTitle().toString();
+            intent.putExtra(Intent.EXTRA_TITLE, title);
+            intent.putExtra(Intent.EXTRA_SUBJECT, title);
+            intent.setType(IMAGE_PNG);
+
+            mindMapView.setDrawingCacheEnabled(true);
+            Bitmap bitmap = Bitmap.createBitmap(mindMapView.getDrawingCache());
+            mindMapView.setDrawingCacheEnabled(false);
+
+            File image = new File(getCacheDir(), MINDMAP_IMAGE);
+            try (FileOutputStream out = new FileOutputStream(image))
+            {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+            }
+
+            Uri imageUri = FileProvider
+                .getUriForFile(this, FILE_PROVIDER, image);
+            intent.putExtra(Intent.EXTRA_STREAM, imageUri);
+            startActivity(Intent.createChooser(intent, null));
+        }
+
+        catch (Exception e) {}
+    }
+
+    // shareJson
+    private void shareJson()
+    {
+        String json = null;
+        try (StringWriter stringWriter = new StringWriter())
+        {
+            JsonWriter writer = new JsonWriter(stringWriter);
+            writer.beginObject();
+            // Save the file marker
+            writer.name(CONTENT).value(TAG);
+            // Save the root node name
+            NodeData<?> root = tree.getRootNode();
+            writer.name(root.getId()).value(root.getDescription());
+            writer.name(NODES);
+            // Save the nodes
+            writer.beginArray();
+            // Child nodes
+            for (String id: root.getChildren())
+            {
+                NodeData<?> node = tree.getNode(id);
+                writer.beginObject();
+                writer.name(ID).value(node.getId());
+                writer.name(PARENT).value(node.getParentId());
+                writer.name(CONTENT).value(node.getDescription());
+                writer.endObject();
+                // Child nodes
+                for (String child: node.getChildren())
+                    saveNodes(writer, child);
+            }
+            writer.endArray();
+            writer.endObject();
+            writer.flush();
+            json = stringWriter.toString();
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        String title = getTitle().toString();
+        intent.putExtra(Intent.EXTRA_TITLE, title);
+        intent.putExtra(Intent.EXTRA_SUBJECT, title);
+        intent.putExtra(Intent.EXTRA_TEXT, json);
+        intent.setType(APPLICATION_JSON);
+        startActivity(Intent.createChooser(intent, null));
     }
 
     // queryName
