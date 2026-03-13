@@ -30,6 +30,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -76,12 +77,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.json.JSONObject;
-import org.json.JSONArray;
 
 public class MindMap extends Activity
     implements PopupMenu.OnMenuItemClickListener
@@ -99,7 +98,7 @@ public class MindMap extends Activity
 
     public static final String APPLICATION_JSON = "application/json";
     public static final String IMAGE_PNG = "image/png";
-    public static final String MINDMAP_IMAGE = "Mindmap.png";
+    public static final String DOT_PNG = ".png";
     public static final String FILE_PROVIDER =
         "org.billthefarmer.mindmap.fileprovider";
 
@@ -818,11 +817,16 @@ public class MindMap extends Activity
             intent.putExtra(Intent.EXTRA_SUBJECT, title);
             intent.setType(IMAGE_PNG);
 
-            mindMapView.setDrawingCacheEnabled(true);
-            Bitmap bitmap = Bitmap.createBitmap(mindMapView.getDrawingCache());
-            mindMapView.setDrawingCacheEnabled(false);
+            View main = findViewById(android.R.id.content);
+            int w = (int)(main.getWidth() / mindMapView.getScaleX());
+            int h = (int)(main.getHeight() / mindMapView.getScaleY());
+            Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.drawColor(0xff303030);
+            mindMapView.draw(canvas);
 
-            File image = new File(getCacheDir(), MINDMAP_IMAGE);
+            String name = UUID.randomUUID().toString() + DOT_PNG;
+            File image = new File(getCacheDir(), name);
             try (FileOutputStream out = new FileOutputStream(image))
             {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
@@ -834,7 +838,12 @@ public class MindMap extends Activity
             startActivity(Intent.createChooser(intent, null));
         }
 
-        catch (Exception e) {}
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+            return;
+        }
     }
 
     // shareJson
