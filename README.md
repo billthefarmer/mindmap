@@ -9,8 +9,8 @@ Lee](https://github.com/hegleB).
 
 ## Intro
 Build yourself a map of whatever takes your fancy. The app allows
-adding and removing nodes, editing the text and saving and loading
-mindmaps.
+adding and removing nodes, editing the text and saving, loading
+and sharing mindmaps.
 
 ## Toolbar
 Not all items may appear, depending on node selection.
