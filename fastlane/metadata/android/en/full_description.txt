@@ -1,0 +1,3 @@
+Build yourself a map of whatever takes your fancy. The app allows
+adding and removing nodes, editing the text and saving, loading
+and sharing mindmaps.
