@@ -5,7 +5,7 @@ Mind Map app
 Uses [MindMapView](https://github.com/hegleB/MindMapView) library by [SangJun
 Lee](https://github.com/hegleB).
 
-![MindMap](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/MindMap.png)
+![MindMap](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/MindMap.png) ![MindMap-drag](https://github.com/billthefarmer/billthefarmer.github.io/raw/master/images/MindMap-drag.png)
 
 ## Intro
 Build yourself a map of whatever takes your fancy. The app allows
@@ -37,6 +37,10 @@ used. When loading a file or rotating the device the nodes will appear
 to zoom out of the top left corner of the display. If you drag the
 nodes around the display, they will be restored to where they *should*
 be. The fit button doesn't always get it exactly right.
+
+## Editing
+As well as editing node text you may drag nodes or part of the tree to
+new positions in the tree. The tree will reorganise itself.
 
 ## Saving and opening files
 When you save a file, the chooser will give you an opportunity to
