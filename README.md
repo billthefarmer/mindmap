@@ -22,6 +22,9 @@ Not all items may appear, depending on node selection.
 * **Fit** &ndash; Fit the display
 * **Open file** &ndash; Load a new mindmap
 * **Save file** &ndash; Save the mindmap
+* **Share**
+  * **Image** &ndash; Share MindMap image
+  * **JSON** &ndash; Share JSON code
 
 Most of the entries will pop up a dialog either prompting for a new
 description, or checking that you want to remove something.
@@ -33,9 +36,7 @@ idiosyncrasies of the [library](https://github.com/hegleB/MindMapView)
 used. When loading a file or rotating the device the nodes will appear
 to zoom out of the top left corner of the display. If you drag the
 nodes around the display, they will be restored to where they *should*
-be. The fit button doesn't always get it exactly right. The default
-position of the root node should be more to the left so as to centre
-the whole tree.
+be. The fit button doesn't always get it exactly right.
 
 ## Saving and opening files
 When you save a file, the chooser will give you an opportunity to
@@ -50,6 +51,10 @@ If you open a [JSON](https://www.json.org/json-en.html) file in a file
 manager, or share one from another app, MindMap will attempt to open
 it and ask if you want to replace an existing one. A dialog will pop
 up if the file isn't a MindMap file or if the app can't read it.
+
+## Sharing
+You can share an image of the current display or the JSON code
+representing the current mindmap.
 
 ## File format
 The mindmap files contain text in the
