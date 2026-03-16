@@ -40,6 +40,7 @@ import android.text.method.LinkMovementMethod;
 import android.util.JsonWriter;
 import android.util.JsonReader;
 import android.util.Log;
+import android.util.Xml;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -82,6 +83,8 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.xmlpull.v1.XmlSerializer;
+
 public class MindMap extends Activity
     implements PopupMenu.OnMenuItemClickListener
 {
@@ -91,19 +94,23 @@ public class MindMap extends Activity
     public static final String NAME = "name";
     public static final String PATH = "path";
     public static final String ROOT = "root";
+    public static final String NODE = "node";
     public static final String NODES = "nodes";
     public static final String PARENT = "parent";
     public static final String CONTENT = "content";
     public static final String CHILDREN = "children";
 
     public static final String APPLICATION_JSON = "application/json";
+    public static final String APPLICATION_XML = "application/xml";
     public static final String IMAGE_PNG = "image/png";
     public static final String DOT_PNG = ".png";
+    public static final String UTF_8 = "UTF-8";
     public static final String FILE_PROVIDER =
         "org.billthefarmer.mindmap.fileprovider";
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
+    public static final int EXPORT_DOCUMENT = 3;
     public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
@@ -338,6 +345,11 @@ public class MindMap extends Activity
             shareJson();
             break;
 
+            // Share json
+        case R.id.action_export:
+            exportXml();
+            break;
+
         default:
             return super.onOptionsItemSelected(item);
         }
@@ -424,6 +436,14 @@ public class MindMap extends Activity
                 return;
 
             saveFile(data.getData());
+            break;
+
+        case EXPORT_DOCUMENT:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            exportXml(data.getData());
             break;
         }
     }
@@ -895,6 +915,73 @@ public class MindMap extends Activity
         intent.putExtra(Intent.EXTRA_TEXT, json);
         intent.setType(APPLICATION_JSON);
         startActivity(Intent.createChooser(intent, null));
+    }
+
+    // exportXml
+    private void exportXml()
+    {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.setType(APPLICATION_XML);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_TITLE, name);
+        startActivityForResult(intent, EXPORT_DOCUMENT);
+    }
+
+    // exportXml
+    private void exportXml(Uri uri)
+    {
+        XmlSerializer serialiser = Xml.newSerializer();
+        try (OutputStreamWriter writer = new OutputStreamWriter
+              (getContentResolver().openOutputStream(uri, "rwt")))
+        {
+            serialiser.setOutput(writer);
+            serialiser.startDocument(UTF_8, false);
+            serialiser.startTag(null, TAG)
+                .attribute(null, NAME, name);
+            // Root node
+            NodeData<?> root = tree.getRootNode();
+            serialiser.startTag(null, NODE)
+                .attribute(null, ID, root.getId())
+                .attribute(null, CONTENT, root.getDescription())
+                .endTag(null, NODE);
+            // Child nodes
+            for (String id: root.getChildren())
+            {
+                NodeData<?> node = tree.getNode(id);
+                serialiser.startTag(null, NODE)
+                    .attribute(null, ID, node.getId())
+                    .attribute(null, PARENT, node.getParentId())
+                    .attribute(null, CONTENT, node.getDescription())
+                    .endTag(null, NODE);
+                // Child nodes
+                for (String child: node.getChildren())
+                    exportNodes(serialiser, child);
+            }
+
+            serialiser.endTag(null, TAG);
+            serialiser.endDocument();
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // exportNodes
+    private void exportNodes(XmlSerializer serialiser, String id)
+        throws Exception
+    {
+        NodeData<?> node = tree.getNode(id);
+        serialiser.startTag(null, NODE)
+            .attribute(null, ID, node.getId())
+            .attribute(null, PARENT, node.getParentId())
+            .attribute(null, CONTENT, node.getDescription())
+            .endTag(null, NODE);
+        // Child nodes
+        for (String child: node.getChildren())
+            exportNodes(serialiser, child);
     }
 
     // queryName

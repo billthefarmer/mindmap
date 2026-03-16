@@ -13,6 +13,7 @@
   <string name="share">Share</string>
   <string name="image">Image</string>
   <string name="json">JSON</string>
+  <string name="export">Export XML</string>
 
   <string name="addNode">Add node</string>
   <string name="node">Node</string>
