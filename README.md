@@ -127,7 +127,7 @@ The app will ignore whitespace in the file.
     </summary>
 
 ```xml
-<?xml version='1.0' encoding='UTF-8' standalone='no' ?>
+<?xml version='1.0' encoding='UTF-8' ?>
 <MindMap name="Develop">
   <node id="root" content="Develop apps" />
   <node id="fd9899ed-ce26-4d64-86dd-9946a79c7907" parent="root" content="Get a computer" />

@@ -64,8 +64,6 @@ import com.mindsync.library.util.Dp;
 
 import java.text.DateFormat;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -82,6 +80,10 @@ import java.util.UUID;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.commonmark.Extension;
+import org.commonmark.node.*;
+import org.commonmark.parser.Parser;
 
 import org.xmlpull.v1.XmlSerializer;
 
@@ -102,6 +104,7 @@ public class MindMap extends Activity
 
     public static final String APPLICATION_JSON = "application/json";
     public static final String APPLICATION_XML = "application/xml";
+    public static final String TEXT_MARKDOWN = "text/markdown";
     public static final String IMAGE_PNG = "image/png";
     public static final String DOT_PNG = ".png";
     public static final String UTF_8 = "UTF-8";
@@ -110,13 +113,14 @@ public class MindMap extends Activity
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
-    public static final int EXPORT_DOCUMENT = 3;
+    public static final int IMPORT_DOCUMENT = 3;
+    public static final int EXPORT_DOCUMENT = 4;
     public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
     private Toolbar toolbar;
-    private Tree<Node> tree;
-    private Node selectedNode;
+    private Tree<MapNode> tree;
+    private MapNode selectedNode;
 
     private String name = TAG;
 
@@ -224,17 +228,15 @@ public class MindMap extends Activity
 
         // Save the map name
         outState.putString(NAME, name);
-        Node root = createNode(tree.getRootNode());
+        MapNode root = createNode(tree.getRootNode());
         Bundle bundle = new Bundle();
         bundle.putString(CONTENT, root.getDescription());
         outState.putBundle(root.getId(), bundle);
-        Log.d(TAG, "Node " + root.getId());
         ArrayList<String> list = new ArrayList<>();
         for (String id: root.getChildren())
         {
-            Log.d(TAG, "Node " + id);
             list.add(id);
-            Node node = createNode(tree.getNode(id));
+            MapNode node = createNode(tree.getNode(id));
             bundle = new Bundle();
             bundle.putString(PARENT, node.getParentId());
             bundle.putString(CONTENT, node.getDescription());
@@ -345,7 +347,12 @@ public class MindMap extends Activity
             shareJson();
             break;
 
-            // Share json
+            // Import markdown
+        case R.id.action_import:
+            importMarkdown();
+            break;
+
+            // Export xml
         case R.id.action_export:
             exportXml();
             break;
@@ -438,6 +445,14 @@ public class MindMap extends Activity
             saveFile(data.getData());
             break;
 
+        case IMPORT_DOCUMENT:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            importMarkdown(data.getData());
+            break;
+
         case EXPORT_DOCUMENT:
             // Check data
             if (data == null || data.getData() == null)
@@ -451,10 +466,9 @@ public class MindMap extends Activity
     // saveState
     private void  saveState(Bundle outState, List<String> list, String id)
     {
-        Log.d(TAG, "Node " + id);
         // Save a node
         list.add(id);
-        Node node = createNode(tree.getNode(id));
+        MapNode node = createNode(tree.getNode(id));
         Bundle bundle = new Bundle();
         bundle.putString(PARENT, node.getParentId());
         bundle.putString(CONTENT, node.getDescription());
@@ -917,6 +931,102 @@ public class MindMap extends Activity
         startActivity(Intent.createChooser(intent, null));
     }
 
+    // importMarkdown
+    private void importMarkdown()
+    {
+        // Check if we have a tree
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+            alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
+            {
+                switch(id)
+                {
+                case DialogInterface.BUTTON_POSITIVE:
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.setType(TEXT_MARKDOWN);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivityForResult(intent, IMPORT_DOCUMENT);
+                    break;
+                }
+            });
+
+        else
+        {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType(TEXT_MARKDOWN);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent, IMPORT_DOCUMENT);
+        }
+    }
+
+    // importMarkdown
+    private void importMarkdown(Uri uri)
+    {
+        StringBuilder text = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader
+               (getContentResolver().openInputStream(uri))))
+        {
+            String line;
+            while ((line = reader.readLine()) != null)
+            {
+                text.append(line);
+                text.append(System.getProperty("line.separator"));
+            }
+
+            // Use commonmark
+            Parser parser = Parser.builder().build();
+            Node document = parser.parse(text.toString());
+
+            document.accept(new AbstractVisitor()
+            {
+                @Override
+                public void visit(Heading heading)
+                {
+                    Log.d(TAG, "Heading " + heading.toString());
+                    visitChildren(heading);
+                }
+
+                @Override
+                public void visit(BulletList list)
+                {
+                    Log.d(TAG, "BulletList " + list.toString());
+                    visitChildren(list);
+                }
+
+                @Override
+                public void visit(OrderedList list)
+                {
+                    Log.d(TAG, "OrderedList " + list.toString());
+                    visitChildren(list);
+                }
+
+                @Override
+                public void visit(ListItem item)
+                {
+                    Log.d(TAG, "ListItem " + item.toString());
+                    visitChildren(item);
+                }
+
+                public void visit(Paragraph paragraph)
+                {
+                    Log.d(TAG, "Paragraph " + paragraph.toString());
+                    visitChildren(paragraph);
+                }
+
+                public void visit(Text text)
+                {
+                    Log.d(TAG, "Text " + text.getLiteral());
+                }
+            }); 
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     // exportXml
     private void exportXml()
     {
@@ -935,7 +1045,7 @@ public class MindMap extends Activity
               (getContentResolver().openOutputStream(uri, "rwt")))
         {
             serialiser.setOutput(writer);
-            serialiser.startDocument(UTF_8, false);
+            serialiser.startDocument(UTF_8, null);
             serialiser.startTag(null, TAG)
                 .attribute(null, NAME, name);
             // Root node
@@ -1006,7 +1116,7 @@ public class MindMap extends Activity
     }
 
     // createNode
-    public Node createNode(NodeData<?> node)
+    public MapNode createNode(NodeData<?> node)
     {
         if (node instanceof CircleNodeData)
         {
@@ -1042,7 +1152,7 @@ public class MindMap extends Activity
     }
 
     // createNodeData
-    public NodeData createNodeData(Node node)
+    public NodeData createNodeData(MapNode node)
     {
         if (node instanceof CircleNode)
         {
@@ -1079,8 +1189,8 @@ public class MindMap extends Activity
             return null;
     }
 
-    // Node
-    abstract class Node
+    // MapNode
+    abstract class MapNode
     {
         public final String id;
         public final String parentId;
@@ -1088,8 +1198,8 @@ public class MindMap extends Activity
         public final String description;
         public final ArrayList<String> children;
 
-        public Node(String id, String parentId, Path path,
-                    String description, List<String> children)
+        public MapNode(String id, String parentId, Path path,
+                       String description, List<String> children)
         {
             this.id = id;
             this.parentId = parentId;
@@ -1123,12 +1233,12 @@ public class MindMap extends Activity
             return children;
         }
 
-        public abstract Node adjustPosition(Float horizontalSpacing,
+        public abstract MapNode adjustPosition(Float horizontalSpacing,
                                             Float totalHeight);
     }
 
     // CircleNode
-    final class CircleNode extends Node
+    final class CircleNode extends MapNode
     {
         public CircleNode(String id, String parentId, Circle path,
                           String description, List<String> children)
@@ -1152,7 +1262,7 @@ public class MindMap extends Activity
     }
 
     // RectangleNode
-    final class RectangleNode extends Node
+    final class RectangleNode extends MapNode
     {
         public RectangleNode(String id, String parentId, Rectangle path,
                              String description, List<String> children)

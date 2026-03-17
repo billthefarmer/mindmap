@@ -55,4 +55,5 @@ android {
 
 dependencies {
     implementation 'com.github.hegleB:MindMapView:0.1.0'
+    implementation 'org.commonmark:commonmark:0.27.1'
 }

@@ -69,6 +69,11 @@
   </item>
 
   <item
+      android:id="@+id/action_import"
+      android:showAsAction="never"
+      android:title="@string/inport" />
+
+  <item
       android:id="@+id/action_export"
       android:showAsAction="never"
       android:title="@string/export" />
