@@ -75,6 +75,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -82,6 +83,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.commonmark.Extension;
+import org.commonmark.ext.front.matter.YamlFrontMatterExtension;
+import org.commonmark.ext.front.matter.YamlFrontMatterNode;
+import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
 import org.commonmark.node.*;
 import org.commonmark.parser.Parser;
 
@@ -98,6 +102,7 @@ public class MindMap extends Activity
     public static final String ROOT = "root";
     public static final String NODE = "node";
     public static final String NODES = "nodes";
+    public static final String TITLE = "title";
     public static final String PARENT = "parent";
     public static final String CONTENT = "content";
     public static final String CHILDREN = "children";
@@ -974,50 +979,142 @@ public class MindMap extends Activity
             }
 
             // Use commonmark
-            Parser parser = Parser.builder().build();
+            List<Extension> extensions =
+                List.of(YamlFrontMatterExtension.create());
+            Parser parser = Parser.builder().extensions(extensions).build();
             Node document = parser.parse(text.toString());
+            List<String> nodeList = new ArrayList<>();
+
+            tree = new Tree<>(this);
+            mindMapView.setTree(tree);
+            mindMapView.initialize();
+
+            document.accept(new YamlFrontMatterVisitor()
+            {
+                @Override
+                public void visit(CustomNode custom)
+                {
+                    YamlFrontMatterNode node = (YamlFrontMatterNode)custom;
+                    if (TITLE.equals(node.getKey()))
+                    {
+                        NodeData<?> root = tree.getRootNode();
+                        tree.updateNode(root.getId(),
+                                        node.getValues().get(0),
+                                        root.getChildren(),
+                                        root.getPath().getCenterX(),
+                                        root.getPath().getCenterY());
+                        nodeList.add(0, root.getId());
+                        name = node.getValues().get(0);
+                        setTitle(name);
+                    }
+                }
+            });
 
             document.accept(new AbstractVisitor()
             {
+                int level = 0;
+                ListBlock block = null;
+
                 @Override
                 public void visit(Heading heading)
                 {
-                    Log.d(TAG, "Heading " + heading.toString());
-                    visitChildren(heading);
+                    StringBuilder content = new StringBuilder();
+                    Node child = heading.getFirstChild();
+                    while (child != null)
+                    {
+                        if (child instanceof Text)
+                            content.append(((Text)child).getLiteral());
+
+                        child = child.getNext();
+                    }
+
+                    if (heading.getLevel() == 1)
+                    {
+                        NodeData<?> root = tree.getRootNode();
+                        tree.updateNode(root.getId(),
+                                        content.toString(),
+                                        root.getChildren(),
+                                        root.getPath().getCenterX(),
+                                        root.getPath().getCenterY());
+                        nodeList.add(0, root.getId());
+                        name = content.toString();
+                        setTitle(name);
+                    }
+
+                    else
+                    {
+                        String id = UUID.randomUUID().toString();
+                        tree.addNode(id,
+                                     nodeList.get(heading.getLevel() - 2),
+                                     content.toString());
+                        nodeList.add(heading.getLevel() - 1, id);
+                    }
+
+                    super.visit(heading);
                 }
 
                 @Override
                 public void visit(BulletList list)
                 {
-                    Log.d(TAG, "BulletList " + list.toString());
-                    visitChildren(list);
+                    block = list;
+                    if (list.getParent() instanceof ListItem)
+                        level++;
+
+                    else
+                        level = 2;
+
+                    super.visit(list);
                 }
 
                 @Override
                 public void visit(OrderedList list)
                 {
-                    Log.d(TAG, "OrderedList " + list.toString());
-                    visitChildren(list);
+                    block = list;
+                    if (list.getParent() instanceof ListItem)
+                        level++;
+
+                    else
+                        level = 2;
+
+                    super.visit(list);
                 }
 
                 @Override
                 public void visit(ListItem item)
                 {
-                    Log.d(TAG, "ListItem " + item.toString());
-                    visitChildren(item);
-                }
+                    StringBuilder content = new StringBuilder();
+                    Node child = item.getFirstChild();
+                    while (child != null)
+                    {
+                        if (child instanceof Text)
+                            content.append(((Text)child).getLiteral());
 
-                public void visit(Paragraph paragraph)
-                {
-                    Log.d(TAG, "Paragraph " + paragraph.toString());
-                    visitChildren(paragraph);
-                }
+                        else if (child instanceof Emphasis)
+                            content.append(((Text)child.getFirstChild())
+                                           .getLiteral());
 
-                public void visit(Text text)
-                {
-                    Log.d(TAG, "Text " + text.getLiteral());
+                        else if (child instanceof StrongEmphasis)
+                            content.append(((Text)child.getFirstChild())
+                                           .getLiteral());
+
+                        if (child instanceof Paragraph)
+                            child = child.getFirstChild();
+
+                        else
+                            child = child.getNext();
+                    }
+
+                    String id = UUID.randomUUID().toString();
+                    tree.addNode(id,
+                                 nodeList.get(level - 1),
+                                 content.toString());
+                    nodeList.add(level, id);
+
+                    super.visit(item);
                 }
-            }); 
+            });
+
+            recreate();
         }
 
         catch (Exception e)
