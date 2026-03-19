@@ -967,6 +967,7 @@ public class MindMap extends Activity
     // importMarkdown
     private void importMarkdown(Uri uri)
     {
+        // Get the text
         StringBuilder text = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader
                (getContentResolver().openInputStream(uri))))
@@ -983,17 +984,19 @@ public class MindMap extends Activity
                 List.of(YamlFrontMatterExtension.create());
             Parser parser = Parser.builder().extensions(extensions).build();
             Node document = parser.parse(text.toString());
-            List<String> nodeList = new ArrayList<>();
 
+            // New tree
             tree = new Tree<>(this);
             mindMapView.setTree(tree);
             mindMapView.initialize();
 
+            List<String> nodeList = new ArrayList<>();
             document.accept(new YamlFrontMatterVisitor()
             {
                 @Override
                 public void visit(CustomNode custom)
                 {
+                    int level = 0;
                     YamlFrontMatterNode node = (YamlFrontMatterNode)custom;
                     if (TITLE.equals(node.getKey()))
                     {
@@ -1003,7 +1006,7 @@ public class MindMap extends Activity
                                         root.getChildren(),
                                         root.getPath().getCenterX(),
                                         root.getPath().getCenterY());
-                        nodeList.add(0, root.getId());
+                        nodeList.add(level, root.getId());
                         name = node.getValues().get(0);
                         setTitle(name);
                     }
@@ -1013,11 +1016,12 @@ public class MindMap extends Activity
             document.accept(new AbstractVisitor()
             {
                 int level = 0;
-                ListBlock block = null;
 
+                // Heading
                 @Override
                 public void visit(Heading heading)
                 {
+                    // Get content
                     StringBuilder content = new StringBuilder();
                     Node child = heading.getFirstChild();
                     while (child != null)
@@ -1025,63 +1029,69 @@ public class MindMap extends Activity
                         if (child instanceof Text)
                             content.append(((Text)child).getLiteral());
 
+                        else if (child instanceof Emphasis ||
+                                 child instanceof StrongEmphasis ||
+                                 child instanceof Link)
+                            content.append(((Text)child.getFirstChild())
+                                           .getLiteral());
+
                         child = child.getNext();
                     }
 
+                    // Title
                     if (heading.getLevel() == 1)
                     {
+                        level = heading.getLevel() - 1;
                         NodeData<?> root = tree.getRootNode();
                         tree.updateNode(root.getId(),
                                         content.toString(),
                                         root.getChildren(),
                                         root.getPath().getCenterX(),
                                         root.getPath().getCenterY());
-                        nodeList.add(0, root.getId());
+                        nodeList.add(level, root.getId());
                         name = content.toString();
                         setTitle(name);
                     }
 
+                    // Node
                     else
                     {
+                        level = heading.getLevel() - 1;
                         String id = UUID.randomUUID().toString();
                         tree.addNode(id,
-                                     nodeList.get(heading.getLevel() - 2),
+                                     nodeList.get(level - 1),
                                      content.toString());
-                        nodeList.add(heading.getLevel() - 1, id);
+                        nodeList.add(level, id);
                     }
 
                     super.visit(heading);
                 }
 
+                // BulletList
                 @Override
                 public void visit(BulletList list)
                 {
-                    block = list;
                     if (list.getParent() instanceof ListItem)
                         level++;
-
-                    else
-                        level = 2;
 
                     super.visit(list);
                 }
 
+                // OrderedList
                 @Override
                 public void visit(OrderedList list)
                 {
-                    block = list;
                     if (list.getParent() instanceof ListItem)
                         level++;
-
-                    else
-                        level = 2;
 
                     super.visit(list);
                 }
 
+                // ListItem
                 @Override
                 public void visit(ListItem item)
                 {
+                    // Get content
                     StringBuilder content = new StringBuilder();
                     Node child = item.getFirstChild();
                     while (child != null)
@@ -1089,11 +1099,9 @@ public class MindMap extends Activity
                         if (child instanceof Text)
                             content.append(((Text)child).getLiteral());
 
-                        else if (child instanceof Emphasis)
-                            content.append(((Text)child.getFirstChild())
-                                           .getLiteral());
-
-                        else if (child instanceof StrongEmphasis)
+                        else if (child instanceof Emphasis ||
+                                 child instanceof StrongEmphasis ||
+                                 child instanceof Link)
                             content.append(((Text)child.getFirstChild())
                                            .getLiteral());
 
@@ -1104,6 +1112,7 @@ public class MindMap extends Activity
                             child = child.getNext();
                     }
 
+                    // Node
                     String id = UUID.randomUUID().toString();
                     tree.addNode(id,
                                  nodeList.get(level - 1),
@@ -1113,8 +1122,6 @@ public class MindMap extends Activity
                     super.visit(item);
                 }
             });
-
-            recreate();
         }
 
         catch (Exception e)
@@ -1122,6 +1129,8 @@ public class MindMap extends Activity
             alertDialog(R.string.appName, e.getMessage());
             e.printStackTrace();
         }
+
+        recreate();
     }
 
     // exportXml
