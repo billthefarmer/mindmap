@@ -14,7 +14,9 @@
   <string name="image">Image</string>
   <string name="json">JSON</string>
   <string name="inport">Import Markdown</string>
-  <string name="export">Export XML</string>
+  <string name="export">Export</string>
+  <string name="xml">XML</string>
+  <string name="markdown">Markdown</string>
 
   <string name="addNode">Add node</string>
   <string name="node">Node</string>

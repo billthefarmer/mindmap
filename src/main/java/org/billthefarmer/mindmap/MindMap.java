@@ -118,8 +118,9 @@ public class MindMap extends Activity
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
-    public static final int IMPORT_DOCUMENT = 3;
+    public static final int IMPORT_MARKDOWN = 3;
     public static final int EXPORT_DOCUMENT = 4;
+    public static final int EXPORT_MARKDOWN = 5;
     public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
@@ -353,13 +354,18 @@ public class MindMap extends Activity
             break;
 
             // Import markdown
-        case R.id.action_import:
+        case R.id.action_import_markdown:
             importMarkdown();
             break;
 
             // Export xml
-        case R.id.action_export:
+        case R.id.action_export_xml:
             exportXml();
+            break;
+
+            // Export Markdown
+        case R.id.action_export_markdown:
+            exportMarkdown();
             break;
 
         default:
@@ -450,7 +456,7 @@ public class MindMap extends Activity
             saveFile(data.getData());
             break;
 
-        case IMPORT_DOCUMENT:
+        case IMPORT_MARKDOWN:
             // Check data
             if (data == null || data.getData() == null)
                 return;
@@ -464,6 +470,14 @@ public class MindMap extends Activity
                 return;
 
             exportXml(data.getData());
+            break;
+
+        case EXPORT_MARKDOWN:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            exportMarkdown(data.getData());
             break;
         }
     }
@@ -950,7 +964,7 @@ public class MindMap extends Activity
                     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     intent.setType(TEXT_MARKDOWN);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    startActivityForResult(intent, IMPORT_DOCUMENT);
+                    startActivityForResult(intent, IMPORT_MARKDOWN);
                     break;
                 }
             });
@@ -960,7 +974,7 @@ public class MindMap extends Activity
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType(TEXT_MARKDOWN);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, IMPORT_DOCUMENT);
+            startActivityForResult(intent, IMPORT_MARKDOWN);
         }
     }
 
@@ -991,6 +1005,9 @@ public class MindMap extends Activity
             mindMapView.initialize();
 
             List<String> nodeList = new ArrayList<>();
+            NodeData<?> root = tree.getRootNode();
+            for (int i = 0; i < 10; i++)
+                nodeList.add(root.getId());
             document.accept(new YamlFrontMatterVisitor()
             {
                 @Override
@@ -1000,15 +1017,12 @@ public class MindMap extends Activity
                     YamlFrontMatterNode node = (YamlFrontMatterNode)custom;
                     if (TITLE.equals(node.getKey()))
                     {
-                        NodeData<?> root = tree.getRootNode();
                         tree.updateNode(root.getId(),
                                         node.getValues().get(0),
                                         root.getChildren(),
                                         root.getPath().getCenterX(),
                                         root.getPath().getCenterY());
-                        nodeList.add(level, root.getId());
-                        name = node.getValues().get(0);
-                        setTitle(name);
+                        nodeList.set(level, root.getId());
                     }
                 }
             });
@@ -1048,9 +1062,7 @@ public class MindMap extends Activity
                                         root.getChildren(),
                                         root.getPath().getCenterX(),
                                         root.getPath().getCenterY());
-                        nodeList.add(level, root.getId());
-                        name = content.toString();
-                        setTitle(name);
+                        nodeList.set(level, root.getId());
                     }
 
                     // Node
@@ -1061,7 +1073,7 @@ public class MindMap extends Activity
                         tree.addNode(id,
                                      nodeList.get(level - 1),
                                      content.toString());
-                        nodeList.add(level, id);
+                        nodeList.set(level, id);
                     }
 
                     super.visit(heading);
@@ -1117,7 +1129,7 @@ public class MindMap extends Activity
                     tree.addNode(id,
                                  nodeList.get(level - 1),
                                  content.toString());
-                    nodeList.add(level, id);
+                    nodeList.set(level, id);
 
                     super.visit(item);
                 }
@@ -1130,6 +1142,9 @@ public class MindMap extends Activity
             e.printStackTrace();
         }
 
+        // Get the name
+        name = (queryName(uri)).replace(".md", "");
+        setTitle(name);
         recreate();
     }
 
@@ -1154,12 +1169,14 @@ public class MindMap extends Activity
             serialiser.startDocument(UTF_8, null);
             serialiser.startTag(null, TAG)
                 .attribute(null, NAME, name);
+
             // Root node
             NodeData<?> root = tree.getRootNode();
             serialiser.startTag(null, NODE)
                 .attribute(null, ID, root.getId())
-                .attribute(null, CONTENT, root.getDescription())
+                .text(root.getDescription())
                 .endTag(null, NODE);
+
             // Child nodes
             for (String id: root.getChildren())
             {
@@ -1167,8 +1184,9 @@ public class MindMap extends Activity
                 serialiser.startTag(null, NODE)
                     .attribute(null, ID, node.getId())
                     .attribute(null, PARENT, node.getParentId())
-                    .attribute(null, CONTENT, node.getDescription())
+                    .text(node.getDescription())
                     .endTag(null, NODE);
+
                 // Child nodes
                 for (String child: node.getChildren())
                     exportNodes(serialiser, child);
@@ -1193,11 +1211,66 @@ public class MindMap extends Activity
         serialiser.startTag(null, NODE)
             .attribute(null, ID, node.getId())
             .attribute(null, PARENT, node.getParentId())
-            .attribute(null, CONTENT, node.getDescription())
+            .text(node.getDescription())
             .endTag(null, NODE);
+
         // Child nodes
         for (String child: node.getChildren())
             exportNodes(serialiser, child);
+    }
+
+    // exportMarkdown
+    private void exportMarkdown()
+    {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.setType(TEXT_MARKDOWN);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_TITLE, name);
+        startActivityForResult(intent, EXPORT_MARKDOWN);
+    }
+
+    // exportMarkdown
+    private void exportMarkdown(Uri uri)
+    {
+        try (OutputStreamWriter writer = new OutputStreamWriter
+              (getContentResolver().openOutputStream(uri, "rwt")))
+        {
+            int level = 1;
+            NodeData<?> root = tree.getRootNode();
+            for (int i = 1; i <= level; i++)
+                writer.append("#");
+            writer.append(" ").append(root.getDescription()).append("\n");
+            level++;
+            // Child nodes
+            for (String id: root.getChildren())
+            {
+                NodeData<?> node = tree.getNode(id);
+                for (int i = 1; i <= level; i++)
+                    writer.append("#");
+                writer.append(" ").append(node.getDescription()).append("\n");
+                for (String childId: node.getChildren())
+                    exportNodes(writer, childId, level + 1);
+                writer.flush();
+            }
+        }
+
+        catch (Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // exportNodes
+    private void exportNodes(OutputStreamWriter writer, String id, int level)
+        throws Exception
+    {
+        NodeData<?> node = tree.getNode(id);
+        for (int i = 1; i <= level; i++)
+            writer.append("#");
+        writer.append(" ").append(node.getDescription()).append("\n");
+        for (String childId: node.getChildren())
+            exportNodes(writer, childId, level + 1);
     }
 
     // queryName

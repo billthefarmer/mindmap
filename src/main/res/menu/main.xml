@@ -69,13 +69,29 @@
   </item>
 
   <item
-      android:id="@+id/action_import"
+      android:id="@+id/action_import_markdown"
       android:showAsAction="never"
       android:title="@string/inport" />
 
   <item
       android:id="@+id/action_export"
       android:showAsAction="never"
-      android:title="@string/export" />
+      android:title="@string/export">
+
+    <menu>
+
+      <item
+          android:id="@+id/action_export_xml"
+          android:showAsAction="never"
+          android:title="@string/xml" />
+
+      <item
+          android:id="@+id/action_export_markdown"
+          android:showAsAction="never"
+          android:title="@string/markdown" />
+
+    </menu>
+
+  </item>
 
 </menu>
