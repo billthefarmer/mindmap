@@ -1004,8 +1004,8 @@ public class MindMap extends Activity
             mindMapView.setTree(tree);
             mindMapView.initialize();
 
-            List<String> nodeList = new ArrayList<>();
             NodeData<?> root = tree.getRootNode();
+            List<String> nodeList = new ArrayList<>();
             for (int i = 0; i < 10; i++)
                 nodeList.add(root.getId());
             document.accept(new YamlFrontMatterVisitor()
@@ -1043,6 +1043,12 @@ public class MindMap extends Activity
                         if (child instanceof Text)
                             content.append(((Text)child).getLiteral());
 
+                        else if (child instanceof Code)
+                            content.append(((Code)child).getLiteral());
+
+                        else if (child instanceof HtmlInline)
+                            content.append(((HtmlInline)child).getLiteral());
+
                         else if (child instanceof Emphasis ||
                                  child instanceof StrongEmphasis ||
                                  child instanceof Link)
@@ -1052,10 +1058,10 @@ public class MindMap extends Activity
                         child = child.getNext();
                     }
 
-                    // Title
-                    if (heading.getLevel() == 1)
+                    level = heading.getLevel() - 1;
+                    // Root
+                    if (level == 0)
                     {
-                        level = heading.getLevel() - 1;
                         NodeData<?> root = tree.getRootNode();
                         tree.updateNode(root.getId(),
                                         content.toString(),
@@ -1068,14 +1074,12 @@ public class MindMap extends Activity
                     // Node
                     else
                     {
-                        level = heading.getLevel() - 1;
                         String id = UUID.randomUUID().toString();
                         tree.addNode(id,
                                      nodeList.get(level - 1),
                                      content.toString());
                         nodeList.set(level, id);
                     }
-
                     super.visit(heading);
                 }
 
@@ -1111,6 +1115,12 @@ public class MindMap extends Activity
                         if (child instanceof Text)
                             content.append(((Text)child).getLiteral());
 
+                        else if (child instanceof Code)
+                            content.append(((Code)child).getLiteral());
+
+                        else if (child instanceof HtmlInline)
+                            content.append(((HtmlInline)child).getLiteral());
+
                         else if (child instanceof Emphasis ||
                                  child instanceof StrongEmphasis ||
                                  child instanceof Link)
@@ -1127,10 +1137,9 @@ public class MindMap extends Activity
                     // Node
                     String id = UUID.randomUUID().toString();
                     tree.addNode(id,
-                                 nodeList.get(level - 1),
+                                 nodeList.get(level),
                                  content.toString());
-                    nodeList.set(level, id);
-
+                    nodeList.set(level + 1, id);
                     super.visit(item);
                 }
             });
