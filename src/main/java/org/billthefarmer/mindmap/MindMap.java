@@ -89,6 +89,7 @@ import org.commonmark.ext.front.matter.YamlFrontMatterVisitor;
 import org.commonmark.node.*;
 import org.commonmark.parser.Parser;
 
+import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
 
 public class MindMap extends Activity
@@ -108,7 +109,7 @@ public class MindMap extends Activity
     public static final String CHILDREN = "children";
 
     public static final String APPLICATION_JSON = "application/json";
-    public static final String APPLICATION_XML = "application/xml";
+    public static final String TEXT_XML = "text/xml";
     public static final String TEXT_MARKDOWN = "text/markdown";
     public static final String IMAGE_PNG = "image/png";
     public static final String DOT_PNG = ".png";
@@ -118,9 +119,11 @@ public class MindMap extends Activity
 
     public static final int OPEN_DOCUMENT = 1;
     public static final int CREATE_DOCUMENT = 2;
-    public static final int IMPORT_MARKDOWN = 3;
-    public static final int EXPORT_DOCUMENT = 4;
-    public static final int EXPORT_MARKDOWN = 5;
+    public static final int IMPORT_DOCUMENT = 3;
+    public static final int IMPORT_MARKDOWN = 4;
+    public static final int EXPORT_DOCUMENT = 5;
+    public static final int EXPORT_MARKDOWN = 6;
+
     public static final int NODE_DELAY = 2;
 
     private MindMapView mindMapView;
@@ -353,6 +356,11 @@ public class MindMap extends Activity
             shareJson();
             break;
 
+            // Import xml
+        case R.id.action_import_xml:
+            importXml();
+            break;
+
             // Import markdown
         case R.id.action_import_markdown:
             importMarkdown();
@@ -454,6 +462,14 @@ public class MindMap extends Activity
                 return;
 
             saveFile(data.getData());
+            break;
+
+        case IMPORT_DOCUMENT:
+            // Check data
+            if (data == null || data.getData() == null)
+                return;
+
+            importXml(data.getData());
             break;
 
         case IMPORT_MARKDOWN:
@@ -950,6 +966,131 @@ public class MindMap extends Activity
         startActivity(Intent.createChooser(intent, null));
     }
 
+    // importXml
+    private void importXml()
+    {
+        // Check if we have a tree
+        NodeData<?> root = tree.getRootNode();
+        if (!root.getChildren().isEmpty())
+            alertDialog(R.string.appName, R.string.replace, (dialog, id) ->
+            {
+                switch(id)
+                {
+                case DialogInterface.BUTTON_POSITIVE:
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.setType(TEXT_XML);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivityForResult(intent, IMPORT_DOCUMENT);
+                    break;
+                }
+            });
+
+        else
+        {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType(TEXT_XML);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent, IMPORT_DOCUMENT);
+        }
+    }
+
+    // importXml
+    private void importXml(Uri uri)
+    {
+        XmlPullParser parser = Xml.newPullParser();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader
+               (getContentResolver().openInputStream(uri))))
+        {
+            String content = null;
+            String parentId = null;
+            String id = null;
+
+            // New tree
+            tree = new Tree<>(this);
+            mindMapView.setTree(tree);
+            mindMapView.initialize();
+
+            NodeData<?> root = tree.getRootNode();
+
+            parser.setInput(reader);
+            int eventType = parser.getEventType();
+            while (eventType != XmlPullParser.END_DOCUMENT)
+            {
+                switch (eventType)
+                {
+                case XmlPullParser.START_DOCUMENT:
+                    eventType = parser.next();
+                    if (eventType != XmlPullParser.START_TAG ||
+                        !TAG.equals(parser.getName()))
+                        throw new Exception
+                            (getResources().getString(R.string.invalid));
+
+                    for (int i = 0; i < parser.getAttributeCount(); i++)
+                    {
+                        switch (parser.getAttributeName(i))
+                        {
+                        case NAME:
+                            name = parser.getAttributeValue(i);
+                            break;
+                        }
+                    }
+                    break;
+
+                case XmlPullParser.START_TAG:
+                    switch (parser.getName())
+                    {
+                    case NODE:
+                        for (int i = 0; i < parser.getAttributeCount(); i++)
+                        {
+                            switch (parser.getAttributeName(i))
+                            {
+                            case ID:
+                                id = parser.getAttributeValue(i);
+                                break;
+
+                            case PARENT:
+                                parentId = parser.getAttributeValue(i);
+                                break;
+                            }
+                        }
+                    }
+                    break;
+
+                case XmlPullParser.TEXT:
+                    content = parser.getText();
+                    break;
+
+                case XmlPullParser.END_TAG:
+                    switch (parser.getName())
+                    {
+                    case NODE:
+                        switch (id)
+                        {
+                        case ROOT:
+                            tree.updateNode(root.getId(), content,
+                                            root.getChildren(),
+                                            root.getPath().getCenterX(),
+                                            root.getPath().getCenterY());
+                            break;
+
+                        default:
+                            tree.addNode(id, parentId, content);
+                            break;
+                        }
+                    }
+                    break;
+                }
+                eventType = parser.next();
+            }
+        }
+
+        catch(Exception e)
+        {
+            alertDialog(R.string.appName, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     // importMarkdown
     private void importMarkdown()
     {
@@ -1161,7 +1302,7 @@ public class MindMap extends Activity
     private void exportXml()
     {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.setType(APPLICATION_XML);
+        intent.setType(TEXT_XML);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_TITLE, name);
         startActivityForResult(intent, EXPORT_DOCUMENT);
