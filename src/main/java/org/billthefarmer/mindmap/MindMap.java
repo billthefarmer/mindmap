@@ -1089,6 +1089,8 @@ public class MindMap extends Activity
             alertDialog(R.string.appName, e.getMessage());
             e.printStackTrace();
         }
+
+        recreate();
     }
 
     // importMarkdown
