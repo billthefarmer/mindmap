@@ -38,8 +38,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_9
-        targetCompatibility JavaVersion.VERSION_1_9
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     buildFeatures {
@@ -55,6 +55,6 @@ android {
 
 dependencies {
     implementation 'com.github.hegleB:MindMapView:0.1.0'
-    implementation 'org.commonmark:commonmark:0.27.1'
-    implementation 'org.commonmark:commonmark-ext-yaml-front-matter:0.27.1'
+    implementation 'org.commonmark:commonmark:0.32.0'
+    implementation 'org.commonmark:commonmark-ext-yaml-front-matter:0.32.0'
 }
